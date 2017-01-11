@@ -1,0 +1,5 @@
+---
+- include: install-telegraf.yml static=no tags=install,telegraf
+- include: generate-new-telegraf-config.yml static=no tags=install,telegraf
+- include: start-telegraf-service.yml static=no tags=service-mgmt,telegraf
+- include: enable-telegraf-service.yml static=no tags=service-mgmt,telegraf

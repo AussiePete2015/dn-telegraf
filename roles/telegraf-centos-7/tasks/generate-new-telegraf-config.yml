@@ -1,0 +1,18 @@
+---
+- name: Delete default telegraf configuration file
+  file: 'path=/etc/telegraf/telegraf.conf state=absent'
+- name: Generate new telegraf configuration file
+  shell: "telegraf -input-filter {{input_filter}} -output-filter {{output_filter}} config > /etc/telegraf/telegraf.conf"
+- name: Configure telegraf to talk with the confluent kafka service
+  replace:
+    dest: /etc/telegraf/telegraf.conf
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - { regexp: '^(#)?(.*)precision = (.*)$' , replace: '\g<2>precision = "1ns"' }
+    - { regexp: '^(.*)localhost(:808[69].*)$' , replace: '\g<1>{{influxdb_addr}}\g<2>' }
+    - { regexp: '^(#)?(.*)kafka(.*)$' , replace: '\g<2>kafka\g<3>' }
+    - { regexp: '^(#)?(.*)topic = "telegraf"(.*)$' , replace: '\g<2>topic = "metrics"\g<3>' }
+    - { regexp: '^(#)?(.*)localhost(:9092.*)$' , replace: '\g<2>{{kafka_addr}}\g<3>' }
+    - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
+    - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>' }

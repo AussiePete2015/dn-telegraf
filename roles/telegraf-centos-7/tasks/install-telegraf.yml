@@ -1,0 +1,6 @@
+---
+- name: Install telegraf agent
+  yum:
+    name: telegraf
+    state: present
+  environment: "{{environment_vars}}"
