@@ -137,7 +137,7 @@ Vagrant.configure("2") do |config|
   # end
 
   config.vm.provision "ansible" do |ansible|
-    ansible.playbook = "telegraf-centos-7.yml"
+    ansible.playbook = "site.yml"
     ansible.extra_vars = {
       proxy_env: { http_proxy: proxy, no_proxy: no_proxy},
       kafka_addr: "#{options[:kafka_addr]}",
