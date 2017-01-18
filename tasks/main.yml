@@ -1,3 +1,4 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - include: install-telegraf.yml static=no tags=install,telegraf
 - include: generate-new-telegraf-config.yml static=no tags=install,telegraf

@@ -1,3 +1,4 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Delete default telegraf configuration file
   file: 'path=/etc/telegraf/telegraf.conf state=absent'
