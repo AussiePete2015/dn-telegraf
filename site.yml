@@ -1,6 +1,6 @@
 ---
 - name: Install/configure telegraf agent on a host
-  hosts: all
+  hosts: "{{host_inventory}}"
   become: true
   roles:
     - ensure-interfaces-up
