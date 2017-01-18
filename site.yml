@@ -1,7 +1,6 @@
 ---
 - name: Install/configure telegraf agent on a host
   hosts: all
-  remote_user: root
   become: true
   roles:
     - ensure-interfaces-up
@@ -11,4 +10,4 @@
       repo_name: "InfluxDB Repository"
       repo_url: "https://repos.influxdata.com/rhel/$releasever/$basearch/stable"
       repo_key_url: "https://repos.influxdata.com/influxdb.key"
-    - telegraf-centos-7
+    - dn-telegraf
