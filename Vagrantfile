@@ -136,6 +136,9 @@ Vagrant.configure("2") do |config|
   #   push.app = "YOUR_ATLAS_USERNAME/YOUR_APPLICATION_NAME"
   # end
 
+  config.vm.define "#{options[:ip_addr]}"
+  telegraf_addr_array = "#{options[:ip_addr]}".split(/,\w*/)
+
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "site.yml"
     ansible.extra_vars = {
@@ -143,7 +146,8 @@ Vagrant.configure("2") do |config|
       kafka_addr: "#{options[:kafka_addr]}",
       influxdb_addr: "#{options[:influxdb_addr]}",
       input_filter: 'cpu:disk:diskio:kernel:mem:processes:swap:system',
-      output_filter: 'kafka:influxdb'
+      output_filter: 'kafka:influxdb',
+      host_inventory: telegraf_addr_array
     }
   end
 
