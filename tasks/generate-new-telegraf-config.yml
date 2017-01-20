@@ -1,10 +1,13 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Delete default telegraf configuration file
+  become: true
   file: 'path=/etc/telegraf/telegraf.conf state=absent'
 - name: Generate new telegraf configuration file
+  become: true
   shell: "telegraf -input-filter {{input_filter}} -output-filter {{output_filter}} config > /etc/telegraf/telegraf.conf"
 - name: Configure telegraf to talk with the confluent kafka service
+  become: true
   replace:
     dest: /etc/telegraf/telegraf.conf
     regexp: "{{ item.regexp }}"

@@ -1,4 +1,5 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Enable the telegraf service on boot
+  become: true
   command: systemctl enable telegraf.service
