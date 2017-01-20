@@ -1,6 +1,7 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Install telegraf agent
+  become: true
   yum:
     name: telegraf
     state: present
