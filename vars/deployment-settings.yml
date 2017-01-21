@@ -1,6 +1,0 @@
-# (c) 2016 DataNexus Inc.  All Rights Reserved
----
-kafka_addr: "192.168.34.8"
-influxdb_addr: "192.168.34.10"
-input_filter: 'cpu:disk:diskio:kernel:mem:processes:swap:system'
-output_filter: 'kafka:influxdb'

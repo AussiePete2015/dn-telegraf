@@ -1,0 +1,11 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+#
+# Defaults that are necessary for all deployments of
+# telegraf; the kafka_addr and influxdb_addr values
+# shown here should definitely be overridden elsewhere
+---
+application: telegraf
+kafka_addr: "127.0.0.1"
+influxdb_addr: "127.0.0.1"
+input_filter: 'cpu:disk:diskio:kernel:mem:processes:swap:system'
+output_filter: 'kafka:influxdb'
