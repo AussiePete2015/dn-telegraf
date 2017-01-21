@@ -2,6 +2,8 @@
 ---
 - name: Install/configure telegraf agent on a host
   hosts: "{{host_inventory}}"
+  vars_files:
+    - vars/telegraf.yml
   vars:
     - combined_package_list: "{{ (default_packages|default([])) | union((install_packages_by_tag|default({})).telegraf|default([])) }}"
   roles:
