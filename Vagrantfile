@@ -22,6 +22,8 @@ class OptionParser
 end
 
 options = {}
+no_ip_commands = ['version', 'global-status', '--help', '-h']
+one_ip_commands = ['destroy', 'status']
 
 optparse = OptionParser.new do |opts|
   opts.banner    = "Usage: #{opts.program_name} [options]"
@@ -44,7 +46,7 @@ optparse = OptionParser.new do |opts|
   options[:ip_addr] = nil
   opts.on( '-a', '--addr IP_ADDR', 'IP_ADDR of the provisioned server' ) do |ip_addr|
     # while parsing, trim an '=' prefix character off the front of the string if it exists
-    # (would occur if the value was passed using an option flag like '-i=192.168.1.1')
+    # (would occur if the value was passed using an option flag like '-a=192.168.1.1')
     options[:ip_addr] = ip_addr.gsub(/^=/,'')
   end
 
@@ -58,18 +60,35 @@ end
 begin
   optparse.order_recognized!(ARGV)
 rescue SystemExit
-  ;
+  exit
 rescue Exception => e
   print "ERROR: could not parse command (#{e.message})\n"
   print optparse
   exit 1
 end
 
-if (!options[:ip_addr] || !options[:kafka_addr] || !options[:influxdb_addr]) && (ARGV[0] == "up" || ARGV[0] == "provision")
-  print "ERROR; IP_ADDR of the provisioned server, influxdb server and kafka server must be supplied for 'up' and 'provision' commands\n"
+# check remaining arguments to see if the command requires
+# an IP address (or not)
+ip_required = (ARGV & no_ip_commands).empty?
+multiple_ips_used = (ARGV & one_ip_commands).empty?
+
+# if an IP address was required but none was given, complain and exit
+if ip_required && !options[:ip_addr]
+  print "ERROR; IP_ADDR of the provisioned server must be supplied for vagrant commands\n"
   print optparse
   exit 1
-elsif options[:kafka_addr] && !(options[:kafka_addr] =~ Resolv::IPv4::Regex)
+end
+
+# print warnings if Kafka and/or InfluxDB instances IP addresses were not included
+if multiple_ips_used && !options[:kafka_addr]
+  print "WARNING; IP_ADDR of the Kafka server was not supplied, using default value\n"
+end
+if multiple_ips_used && !options[:influxdb_addr]
+  print "WARNING; IP_ADDR of the InfluxDB server was not supplied, using default value\n"
+end
+
+# if any of the included IP addresses are not IPv4 addresses, print an error and exit
+if options[:kafka_addr] && !(options[:kafka_addr] =~ Resolv::IPv4::Regex)
   print "ERROR; input kafka server IP address '#{options[:kafka_addr]}' is not a valid IP address"
   exit 2
 elsif options[:influxdb_addr] && !(options[:influxdb_addr] =~ Resolv::IPv4::Regex)
@@ -174,10 +193,14 @@ Vagrant.configure("2") do |config|
         proxy_username: proxy_username,
         proxy_password: proxy_password
       },
-      kafka_addr: "#{options[:kafka_addr]}",
-      influxdb_addr: "#{options[:influxdb_addr]}",
       host_inventory: telegraf_addr_array
     }
+    if options[:kafka_addr]
+      ansible.extra_vars[:kafka_addr] = "#{options[:kafka_addr]}"
+    end
+    if options[:influxdb_addr]
+      ansible.extra_vars[:influxdb_addr] = "#{options[:influxdb_addr]}"
+    end
   end
 
 end
