@@ -1,5 +1,10 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-- name: Enable the telegraf service on boot
+- name: Enable the telegraf agents on boot
   become: true
-  command: systemctl enable telegraf.service
+  service:
+    name: "telegraf-{{item}}"
+    enabled: yes
+  with_items:
+    - metrics
+    - logs

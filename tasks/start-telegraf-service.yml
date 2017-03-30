@@ -1,5 +1,16 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-- name: Start telegraf service
+- name: Check status of telegraf-{{agent_type}} agent
+  shell: "systemctl status telegraf-{{agent_type}}"
+  register: status_output
+  failed_when: false
+# set task to restart if service is already running,
+# otherwise task will start the service
+- set_fact:
+    desired_state: restarted
+  when: status_output.rc == 0
+- name: (Re)start telegraf-{{agent_type}} agent
   become: true
-  command: systemctl start telegraf.service
+  service:
+    name: "telegraf-{{agent_type}}"
+    state: "{{desired_state | default('started')}}"

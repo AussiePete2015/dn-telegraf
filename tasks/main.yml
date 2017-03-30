@@ -1,6 +1,7 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-- include: install-telegraf.yml static=no tags=install,telegraf
-- include: generate-new-telegraf-config.yml static=no tags=install,telegraf
-- include: start-telegraf-service.yml static=no tags=service-mgmt,telegraf
-- include: enable-telegraf-service.yml static=no tags=service-mgmt,telegraf
+- include: install-telegraf.yml static=no
+- include: generate-new-telegraf-config.yml static=no
+- include: create-telegraf-services.yml static=no
+- include: start-telegraf-services.yml static=no
+- include: enable-telegraf-service.yml static=no

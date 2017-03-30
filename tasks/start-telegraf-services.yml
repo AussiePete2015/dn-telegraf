@@ -1,0 +1,9 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+- name: Start telegraf agents
+  include: start-telegraf-service.yml static=no
+  with_items:
+    - metrics
+    - logs
+  loop_control:
+    loop_var: agent_type

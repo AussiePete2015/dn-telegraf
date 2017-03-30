@@ -1,0 +1,38 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+- block:
+  - name: Create backup of default telegraf service file
+    copy:
+      src: /usr/lib/systemd/system/telegraf.service
+      dest: /usr/lib/systemd/system/.telegraf.service.bak
+      remote_src: true
+      mode: 0644
+    failed_when: false
+  - name: Remove the default telegraf service file
+    file:
+      path: /usr/lib/systemd/system/telegraf.service
+      state: absent
+  - name: Generate the new telegraf service files
+    copy:
+      src: /usr/lib/systemd/system/.telegraf.service.bak
+      dest: "/usr/lib/systemd/system/telegraf-{{item}}.service"
+      remote_src: true
+    with_items:
+      - metrics
+      - logs
+  - name: Reconfigure the new telegraf service files
+    replace:
+      dest: "/usr/lib/systemd/system/telegraf-{{item}}.service"
+      regexp: '^(ExecStart.*telegraf).(conf.*)$'
+      replace: '\g<1>-{{item}}.\g<2>'
+    with_items:
+      - metrics
+      - logs
+  - name: Setup logs agent to run as root (needed to report logs)
+    replace:
+      dest: "/usr/lib/systemd/system/telegraf-logs.service"
+      regexp: '^(User.*)(telegraf)$'
+      replace: '\g<1>root'
+  - name: Restart systemctl daemon
+    command: systemctl daemon-reload
+  become: true
