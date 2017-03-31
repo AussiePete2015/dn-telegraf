@@ -57,6 +57,27 @@ optparse = OptionParser.new do |opts|
     options[:kafka_inventory_file] = kafka_inventory_file.gsub(/^=/,'')
   end
 
+  options[:telegraf_url] = nil
+  opts.on( '-u', '--url TELEGRAF_URL', 'URL of a patched telegraf executable' ) do |telegraf_url|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-u=http://localhost/tmp.tgz')
+    options[:telegraf_url] = telegraf_url.gsub(/^=/,'')
+  end
+
+  options[:local_telegraf_file] = nil
+  opts.on( '-l', '--local-telegraf-file FILE', 'Path to a patched telegraf executable' ) do |local_telegraf_file|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-l=/tmp/telegraf')
+    options[:local_telegraf_file] = local_telegraf_file.gsub(/^=/,'')
+  end
+
+  options[:local_vars_file] = nil
+  opts.on( '-f', '--local-vars-file FILE', 'Local variables file' ) do |local_vars_file|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-f=/tmp/local-vars-file.yml')
+    options[:local_vars_file] = local_vars_file.gsub(/^=/,'')
+  end
+
   opts.on_tail( '-h', '--help', 'Display this screen' ) do
     print opts
     exit
@@ -84,6 +105,22 @@ provisioning_command = !((ARGV & provisioning_command_args).empty?) && (ARGV & n
 single_ip_command = !((ARGV & single_ip_commands).empty?)
 # and to see if a kafka node (or cluster) must also be provided
 no_kafka_required_command = !(ARGV & no_kafka_required_command_args).empty?
+
+
+if options[:telegraf_url] && options[:local_telegraf_file]
+  print "ERROR; the telegraf_url option and the local_telegraf_file options cannot be combined\n"
+  exit 2
+end
+
+if options[:telegraf_url] && !(options[:telegraf_url] =~ URI::regexp)
+  print "ERROR; input kafka URL '#{options[:telegraf_url]}' is not a valid URL\n"
+  exit 3
+end
+
+if options[:local_telegraf_file] && !File.file?(options[:local_telegraf_file])
+  print "ERROR; input local telegraf file path '#{options[:local_telegraf_file]}' is not a local file\n"
+  exit 3
+end
 
 # if a kafka inventory file was included, then make sure the file exists
 if options[:kafka_list] && !options[:kafka_inventory_file]
@@ -194,21 +231,16 @@ if telegraf_addr_array.size > 0
     # trigger the playbook runs for all of the nodes simultaneously using the
     # `site.yml` playbook
     telegraf_addr_array.each do |machine_addr|
-
-      # start of configuration process for this machine
       config.vm.define machine_addr do |machine|
-
         # create a private network, which each allow host-only access to the machine
         # using a specific IP.
-        config.vm.network "private_network", ip: machine_addr
-
+        machine.vm.network "private_network", ip: machine_addr
         # if it's the last node in the list if input addresses, then provision
         # all of the nodes simultaneously (if the `--no-provision` flag was not
         # set, of course)
         if machine_addr == telegraf_addr_array[-1]
-
           # and provision our Telegraf node using the Ansible playbook in the site.yml file
-          config.vm.provision "ansible" do |ansible|
+          machine.vm.provision "ansible" do |ansible|
             ansible.limit = "all"
             ansible.playbook = "site.yml"
             ansible.groups = {
@@ -225,7 +257,21 @@ if telegraf_addr_array.size > 0
               host_inventory: telegraf_addr_array,
               cloud: "vagrant"
             }
-
+            # if defined, set the 'extra_vars[:telegraf_url]' value to the value that was passed in on
+            # the command-line (eg. "https://10.0.2.2/tmp/telegraf")
+            if options[:telegraf_url]
+              ansible.extra_vars[:telegraf_url] = options[:telegraf_url]
+            end
+            # if defined, set the 'extra_vars[:local_telegraf_file]' value to the value that was passed
+            # in on the command-line (eg. "/tmp/telegraf")
+            if options[:local_telegraf_file]
+              ansible.extra_vars[:local_telegraf_file] = options[:local_telegraf_file]
+            end
+            # if defined, set the 'extra_vars[:local_vars_file]' value to the value that was passed
+            # in on the command-line (eg. "/tmp/local-vars.yml")
+            if options[:local_vars_file]
+              ansible.extra_vars[:local_vars_file] = options[:local_vars_file]
+            end
             # if a kafka address list was passed in, then construct the inventory
             # hash we'll need in our playbook
             if kafka_addr_array.size > 0

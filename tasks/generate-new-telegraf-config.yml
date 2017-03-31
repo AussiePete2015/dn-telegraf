@@ -1,6 +1,14 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - block:
+  # load the 'local variables file' if one was defined
+  - name: Load local variables file (if defined)
+    include_vars:
+      file: "{{local_vars_file}}"
+    when: not (local_vars_file is undefined or local_vars_file is none or local_vars_file | trim == '')
+  # then, generate a new configuratino file by first removing the default
+  # configuration file and then creating another for each agent (one for 
+  # metrics, the other for logs)
   - name: Delete default telegraf configuration file
     file:
       path: /etc/telegraf/telegraf.conf
@@ -10,6 +18,9 @@
     with_items:
       - metrics
       - logs
+  # then configure each of our agents to report the metrics/logs
+  # that they gather to the Kafka instance (or cluster) that was
+  # passed in
   - set_fact:
       kfka_nodes_str: "{{kfka_nodes | join(':9092\",\"')}}"
   - name: Configure telegraf to report metrics to Kafka
@@ -40,6 +51,19 @@
       - { regexp: '^(#)?(.*)localhost(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<3>' }
       - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
       - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>' }
+  # finally, add the json_timestamp_units to both configuration files
+  # (so that the timestamps that are output are in nanoseconds) and add
+  # the log_patterns that were passed in as custom patterns in the
+  # configuration of the 'logs' agent
+  - name: Add json_timestamp_units to the outputs for both
+    lineinfile:
+      dest: "/etc/telegraf/telegraf-{{item}}.conf"
+      insertafter: "^(\\s+)data_format"
+      line: '  json_timestamp_units = "1ns"'
+      state: present
+    with_items:
+      - metrics
+      - logs
   - set_fact:
       keys_prefix: '"%{'
       keys_sep: '}","%{'
@@ -49,9 +73,8 @@
   - name: Add custom_patterns to the telegraf-logs configuration
     lineinfile:
       dest: /etc/telegraf/telegraf-logs.conf
-      regexp: "^(\\s+)'''$"
-      line: "      {{item.key}} {{item.value}}\n    '''"
-      insertbefore: yes
+      insertbefore: "^(\\s+)'''$"
+      line: '      {{item.key}} {{item.value}}'
       state: present
     with_dict: "{{log_patterns}}"
   - name: Add patterns the telegraf-logs configuration

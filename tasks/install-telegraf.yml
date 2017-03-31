@@ -1,8 +1,47 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
+# First, setup a fact indicating whether or not a local path (local to
+# the Ansible node) pointing to a newer version of the Telegraf agent
+# was provided; if not, then we also set a fact indicating whether or not
+# a URL that points to a newer Telegraf executable was provided
+- set_fact:
+    update_from_dir: "{{not(local_telegraf_file is undefined or local_telegraf_file is none or local_telegraf_file | trim == '')}}"
+- set_fact:
+    update_from_url: "{{not(telegraf_url is undefined or telegraf_url is none or telegraf_url | trim == '')}}"
+  when: not(update_from_dir)
+# next, install telegraf from the standard repository
 - name: Install telegraf agent
   become: true
   yum:
     name: telegraf
     state: present
   environment: "{{environment_vars}}"
+# and, if either the local file path of a URL was provided
+# and that path ends in 'telegraf', backup the default telegraf
+# executable that was installed from the package, then upload
+# (or download) executable provided as part of the ansible
+# playbook run
+- block:
+  - name: Backup default telegraf executable
+    copy:
+      src: "/usr/bin/telegraf"
+      dest: "/usr/bin/.telegraf.bak"
+      remote_src: true
+      mode: 0755
+      force: no
+    when: update_from_dir or update_from_url
+  - name: Upload telegraf executable from local file
+    copy:
+      src: "{{local_telegraf_file}}"
+      dest: /usr/bin/telegraf
+      mode: 0755
+    when: update_from_dir and (local_telegraf_file | basename) == 'telegraf'
+  - name: Download the telegraf executable from the URL provided
+    get_url:
+      url: "{{telegraf_url}}"
+      dest: /usr/bin/telegraf
+      mode: 0755
+      validate_certs: no
+    environment: "{{environment_vars}}"
+    when: update_from_url is defined and (telegraf_url | basename) == 'telegraf'
+  become: true
