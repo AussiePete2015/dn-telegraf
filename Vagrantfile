@@ -122,6 +122,12 @@ if options[:local_telegraf_file] && !File.file?(options[:local_telegraf_file])
   exit 3
 end
 
+# if a local variables file was passed in, check and make sure it's a valid filename
+if options[:local_vars_file] && !File.file?(options[:local_vars_file])
+  print "ERROR; input local variables file '#{options[:local_vars_file]}' is not a local file\n"
+  exit 3
+end
+
 # if a kafka inventory file was included, then make sure the file exists
 if options[:kafka_list] && !options[:kafka_inventory_file]
   print "ERROR; the if a kafka list is defined, a kafka inventory file must also be provided\n"
@@ -160,7 +166,7 @@ if provisioning_command || ip_required
         end
       end
       # if this command requires a kafka node (or cluster), then parse the kafka_list and check it
-      if !no_kafka_required_command
+      if provisioning_command && !no_kafka_required_command
         if !options[:kafka_list]
           print "ERROR; IP address must be supplied (using the `-k, --kafka-list` flag) for this vagrant command\n"
           exit 1
