@@ -24,7 +24,7 @@
       vars:
         host_group_list:
           - { name: telegraf, node_list: "{{host_inventory}}" }
-          - { name: kafka, inventory: "{{kafka_inventory | default({})}}", node_list: "{{kafka_nodes | default([])}}" }
+          - { name: kafka, inventory_file: "{{kafka_inventory_file}}" }
       when: cloud == 'vagrant'
 
 # Collect the 'hostvars' facts from the kafka host group

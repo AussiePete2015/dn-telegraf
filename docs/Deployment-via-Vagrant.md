@@ -1,9 +1,8 @@
 # Deployment via Vagrant
-A [Vagrantfile](../Vagrantfile) is included in this repository that can be used to deploy Telegraf agents locally (to one or more VMs hosted under [VirtualBox](https://www.virtualbox.org/)) using [Vagrant](https://www.vagrantup.com/). From the top-level directory of this repository a command like the following will (by default) create a single CentOS 7 virtual machine running under VirtualBox, then deploy a Telegraf agent to that box and configure it to talk to an associated Kafka instance or cluster (we're showing a three-node Kafka cluster in this example):
+A [Vagrantfile](../Vagrantfile) is included in this repository that can be used to deploy Telegraf agents locally (to one or more VMs hosted under [VirtualBox](https://www.virtualbox.org/)) using [Vagrant](https://www.vagrantup.com/). From the top-level directory of this repository a command like the following will (by default) create a single CentOS 7 virtual machine running under VirtualBox, then deploy a Telegraf agent to that box and configure it to talk to an associated Kafka instance or cluster:
 
 ```bash
 $ vagrant -a="192.168.34.88" \
-    -k="192.168.34.8,192.168.34.9,192.168.34.10" \
     -i="./kafka_inventory" up
 ```
 
@@ -15,7 +14,7 @@ $ vagrant -a="192.168.34.88,192.168.34.89,192.168.34.90" \
     -i="./kafka_inventory" up
 ```
 
-This command will create three nodes, deploy Telegraf agents to all of those nodes, and configure those Telegraf agents to report the metrics and logs information that they gather back to the associated Kafka cluster (which has been passed in using the `-k, --kafka-list` flag). Note that a third argument (the `-i, --kafka-inventory-file` command-line argument) must also be included in these command. That argument is used to pass in a reference to the location of a static inventory file containing the information needed to connect to the nodes in the Kafka cluster (so that the playbook can gather facts about those nodes and configure the Telegraf agents to talk to them correctly). If either of these two arguments are not provided when provisioning Telegraf agents to a node (or nodes), or if the values passed in by either of them are not valid values, then an error will be thrown by the `vagrant` command.
+This command will three-nodes, deployt Telegraf agents to all three of those nodes, and configure those agents to report the metrics and logs information that they are gathering to the Kafka instance or cluster that is described in the static inventory that we are passing into the `vagrant ... up` command shown here using the `-i, --inventory-file` flag. The argument passed in using this flag **must** point to an Ansible (static) inventory file containing the information needed to connect to the nodes in that Kafka cluster (so that the playbook can gather facts about those nodes to configure the Telegraf agents to report the meta-data they are gathering to that cluster). If this inventory file is not provided when building a multi-node cluster, or if the file passed in does not contain the information needed to connect to one or more Kafka nodes, then an error will be thrown by the `vagrant` command.
 
 In terms of how it all works, the [Vagrantfile](../Vagrantfile) is written in such a way that the following sequence of events occurs when the `vagrant ... up` command shown above is run:
 
@@ -43,7 +42,6 @@ To provision Telegraf agents to the machines that were created above and configu
 
 ```bash
 $ vagrant -s="192.168.34.88,192.168.34.89,192.168.34.90" \
-    -k="192.168.34.8,192.168.34.9,192.168.34.10" \
     -i="./kafka_inventory" provision
 ```
 
@@ -53,8 +51,7 @@ That command will attach to the named instances and run the playbook in this rep
 While the commands shown above will install Telegraf agents to one or more nodes with a reasonable, default configuration from a standard location, there are additional command-line parameters that can be used to control the deployment process triggered by a `vagrant ... up` or `vagrant ... provision` command. Here is a complete list of the command-line flags that can be supported by the [Vagrantfile](../Vagrantfile) in this repository:
 
 * **`-a, --addr-list`**: the address list; this is the list of nodes that will be created and provisioned, either by a single `vagrant ... up` command or by a `vagrant ... up --no-provision` command followed by a `vagrant ... provision` command; this command-line flag **must** be provided for almost every `vagrant` command supported by the [Vagrantfile](../Vagrantfile) in this repository
-* **`-k, --kafka-list`**: a comma-separated list of the nodes that make up the associated Kafka cluster; this argument **must** be provided for any `vagrant` commands that involve provisioning of Telegraf agents to nodes
-* **`-i, --kafka-inventory-file`**: the path to a static inventory file containing the parameters needed to connect to the nodes that make up the associated Kafka cluster; this argument **must** be provided for any `vagrant` commands that involve provisioning of Telegraf agents to nodes
+* **`-i, --inventory-file`**: the path to a static inventory file containing the parameters needed to connect to the nodes that make up the associated Kafka cluster; this argument **must** be provided for any `vagrant` commands that involve provisioning of Telegraf agents to nodes
 * **`-l, --local-telegraf-file`**: the local path (on the Ansible host) to a `telegraf` executable that should be used in place of the default `telegraf` executable that is installed from the main InfuxDB repository during the playbook run; useful for situations were a newer (or older?) version of Telegraf is needed for a given deployment
 * **`-u, --url`**: the URL that can be used to download a `telegraf` executable that should be used in place of the default `telegraf` executable that is installed from the main InfuxDB repository during the playbook run; useful for situations were a newer (or older?) version of Telegraf is needed for a given deployment
 * **`-f, --local-vars-file`**: the *local variables file* that should be used when deploying the cluster. A local variables file can be used to maintain the configuration parameter definitions that should be used for a given Telegraf deployment, and values in this file will override any values that are either embedded in the [vars/telegraf.yml](../vars/telegraf.yml) file as defaults or passed into the `ansible-playbook` command as extra variables
@@ -63,9 +60,8 @@ As an example of how these options might be used, the following command will dow
 
 ```bash
 $ vagrant -s="192.168.34.88,192.168.34.99,192.168.34.90" \
-    -k="192.168.34.8,192.168.34.9,192.168.34.10" \
-    -i='/Users/tjmcs/Vagrant/dn-kafka/.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory' \
-    -u=http://192.168.34.254/telegraf/linux_amd64/telegraf
+    -i="./kafka_inventory" \
+    -u=http://192.168.34.254/telegraf/linux_amd64/telegraf \
     provision
 ```
 

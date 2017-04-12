@@ -21,6 +21,21 @@ class OptionParser
   end
 end
 
+# a function that is used to parse Ansible (static) inventory files and
+# return a list of the node addresses contained in the file
+def addr_list_from_inventory_file(inventory_file)
+  first_field_list = []
+  File.open(inventory_file, 'r') do |f|
+    f.each_line do |line|
+      # grab the first field from each line
+      first_field_list << line.gsub(/\s+/, ' ').strip.split(" ")[0]
+    end
+  end
+  # return the entries that look like IP addresses (skipping the rest)
+  # and only return the unique values in the resulting list
+  first_field_list.select { |addr| (addr =~ Resolv::IPv4::Regex) }.uniq
+end
+
 options = {}
 # vagrant commands that include these commands can be run without specifying
 # any IP addresses
@@ -43,18 +58,11 @@ optparse = OptionParser.new do |opts|
     options[:addr_list] = addr_list.gsub(/^=/,'')
   end
 
-  options[:kafka_list] = nil
-  opts.on( '-k', '--kafka-list A1,A2[,...]', 'Kafka address list' ) do |kafka_list|
+  options[:inventory_file] = nil
+  opts.on( '-i', '--inventory-file FILE', 'Kafka (Ansible) inventory file' ) do |inventory_file|
     # while parsing, trim an '=' prefix character off the front of the string if it exists
-    # (would occur if the value was passed using an option flag like '-k=192.168.1.1')
-    options[:kafka_list] = kafka_list.gsub(/^=/,'')
-  end
-
-  options[:kafka_inventory_file] = nil
-  opts.on( '-i', '--kafka-inventory-file FILE', 'Kafka (Ansible) inventory file' ) do |kafka_inventory_file|
-    # while parsing, trim an '=' prefix character off the front of the string if it exists
-    # (would occur if the value was passed using an option flag like '-k=/tmp/vagrant_ansible_inventory')
-    options[:kafka_inventory_file] = kafka_inventory_file.gsub(/^=/,'')
+    # (would occur if the value was passed using an option flag like '-i=/tmp/kafka_inventory')
+    options[:inventory_file] = inventory_file.gsub(/^=/,'')
   end
 
   options[:telegraf_url] = nil
@@ -103,7 +111,7 @@ provisioning_command = !((ARGV & provisioning_command_args).empty?) && (ARGV & n
 # and to see if multiple IP addresses are supported (or not) for the
 # command being invoked
 single_ip_command = !((ARGV & single_ip_commands).empty?)
-# and to see if a kafka node (or cluster) must also be provided
+# and to see if a kafka inventory must also be provided
 no_kafka_required_command = !(ARGV & no_kafka_required_command_args).empty?
 
 
@@ -128,6 +136,11 @@ if options[:local_vars_file] && !File.file?(options[:local_vars_file])
   exit 3
 end
 
+if options[:inventory_file] && !File.file?(options[:inventory_file])
+  print "ERROR; the if a zookeeper list is defined, a zookeeper inventory file must also be provided\n"
+  exit 2
+end
+
 # if a kafka inventory file was included, then make sure the file exists
 if options[:kafka_list] && !options[:kafka_inventory_file]
   print "ERROR; the if a kafka list is defined, a kafka inventory file must also be provided\n"
@@ -139,7 +152,6 @@ end
 
 # if we're provisioning, then the `--addr-list` flag must be provided
 telegraf_addr_array = []
-kafka_addr_array = []
 if provisioning_command || ip_required
   if !options[:addr_list]
     print "ERROR; IP address must be supplied (using the `-a, --addr-list` flag) for this vagrant command\n"
@@ -167,30 +179,18 @@ if provisioning_command || ip_required
       end
       # if this command requires a kafka node (or cluster), then parse the kafka_list and check it
       if provisioning_command && !no_kafka_required_command
-        if !options[:kafka_list]
-          print "ERROR; IP address must be supplied (using the `-k, --kafka-list` flag) for this vagrant command\n"
+        if !options[:inventory_file]
+          print "ERROR; A kafka inventory file must be supplied (using the `-i, --inventory-file` flag)\n"
+          print "       containing the (static) inventory file for one or more Kafka nodes when\n"
+          print "       provisioning Telegraf agents\n"
           exit 1
         else
-          kafka_addr_array = options[:kafka_list].split(',').map { |elem| elem.strip }.reject { |elem| elem.empty? }
-          if kafka_addr_array.size == 1
-            if !(kafka_addr_array[0] =~ Resolv::IPv4::Regex)
-              print "ERROR; input Kafka IP address #{kafka_addr_array[0]} is not a valid IP address\n"
-              exit 2
-            end
-          else
-            # check the input `kafka_addr_array` to ensure that all of the values passed in are
-            # legal IP addresses
-            not_ip_addr_list = kafka_addr_array.select { |addr| !(addr =~ Resolv::IPv4::Regex) }
-            if not_ip_addr_list.size > 0
-              # if some of the values are not valid IP addresses, print an error and exit
-              if not_ip_addr_list.size == 1
-                print "ERROR; input kafka IP address #{not_ip_addr_list} is not a valid IP address\n"
-                exit 2
-              else
-                print "ERROR; input kafka IP addresses #{not_ip_addr_list} are not valid IP addresses\n"
-                exit 2
-              end
-            end
+          # parse the inventory file that was passed in and retrieve the list of host addresses from it
+          kafka_addr_array = addr_list_from_inventory_file(options[:inventory_file])
+          if kafka_addr_array.size == 0
+            print "ERROR; an inventory file containing information for one or more kafka nodes must be\n"
+            print "       passed in when provisioning Telegraf agents\n"
+            exit 1
           end
         end
       end
@@ -261,6 +261,7 @@ if telegraf_addr_array.size > 0
               },
               data_iface: "eth1",
               host_inventory: telegraf_addr_array,
+              kafka_inventory_file: options[:inventory_file],
               cloud: "vagrant"
             }
             # if defined, set the 'extra_vars[:telegraf_url]' value to the value that was passed in on
@@ -277,32 +278,6 @@ if telegraf_addr_array.size > 0
             # in on the command-line (eg. "/tmp/local-vars.yml")
             if options[:local_vars_file]
               ansible.extra_vars[:local_vars_file] = options[:local_vars_file]
-            end
-            # if a kafka address list was passed in, then construct the inventory
-            # hash we'll need in our playbook
-            if kafka_addr_array.size > 0
-              ansible.extra_vars[:kafka_nodes] = kafka_addr_array
-              # use the contents of the kafka_inventory_file to construct the
-              # inventory hash
-              kafka_inventory = {}
-              kafka_inventory_file = options[:kafka_inventory_file]
-              File.open(kafka_inventory_file, "r") do |file|
-                while (line = file.gets)
-                  split_line = line.split
-                  if split_line.size > 1 && kafka_addr_array.include?(split_line[0])
-                    hostname = split_line[0]
-                    inventory_hash = {}
-                    for val in split_line[1..-1]
-                      key,val = val.split('=')
-                      if val
-                        inventory_hash[key.to_sym] = val.delete("'")
-                      end
-                    end
-                    kafka_inventory[hostname] = inventory_hash
-                  end
-                end
-                ansible.extra_vars[:kafka_inventory] =  kafka_inventory
-              end
             end
           end
         end
