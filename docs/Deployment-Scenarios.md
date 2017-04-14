@@ -16,14 +16,17 @@ $ cat test-cluster-inventory
 $
 ```
 
-To correctly configure our Telegraf agents to talk to the Kafka cluster, the playbook will need to connect to the nodes that make up the associated Kafka cluster and collect information from them, and to do so we'll have to pass in the information that Ansible will need to make those connections to the playbook. We do this by passing in a separate hash of hashes (the `kafka_inventory` for the deployment) that maps the same parameters shown above to each of the members of our Kafka cluster. For the purposes of this example, let's assume that our `kafka_inventory` hash map looks something like this:
+To correctly configure our Telegraf agents to talk to the Kafka cluster, the playbook will need to connect to the nodes that make up the associated Kafka cluster and collect information from them, and to do so we'll have to pass in the information that Ansible will need to make those connections to the playbook. We do this by passing in a separate inventory file (the `kafka_inventory_file` for the deployment) that contains the inventory information for the members of the Kafka cluster that our Telegraf agents will be reporting their metrics to. For the purposes of this example, let's assume that our `kafka_inventory_file` looks something like this:
 
-```json
-    {
-      '192.168.34.8': { ansible_ssh_host: '192.168.34.8', ansible_ssh_port: 22, ansible_ssh_user: 'cloud-user', ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key'},
-      '192.168.34.9': { ansible_ssh_host: '192.168.34.9', ansible_ssh_port: 22, ansible_ssh_user: 'cloud-user', ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key'},
-      '192.168.34.10': { ansible_ssh_host: '192.168.34.10', ansible_ssh_port: 22, ansible_ssh_user: 'cloud-user', ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key'},
-    }
+```bash
+$ cat kafka-inventory
+# example inventory file for a clustered deployment
+
+192.168.34.8 ansible_ssh_host= 192.168.34.8 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.9 ansible_ssh_host= 192.168.34.9 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.10 ansible_ssh_host= 192.168.34.10 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+
+$
 ```
 
 To deploy Telegraf agents to the three nodes in our static inventory file, we'd run a command that looks something like this:
@@ -31,19 +34,7 @@ To deploy Telegraf agents to the three nodes in our static inventory file, we'd 
 ```bash
 $ ansible-playbook -i test-cluster-inventory -e "{ \
       host_inventory: ['192.168.34.18', '192.168.34.19', '192.168.34.20'], \
-      cloud: vagrant, data_iface: eth0, \
-      kafka_nodes: ['192.168.34.8', '192.168.34.9', '192.168.34.10'], \
-      kafka_inventory: {
-          '192.168.34.8': { ansible_ssh_host: '192.168.34.8', ansible_ssh_port: 22, \
-              ansible_ssh_user: 'cloud-user',  \
-              ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key' }, \
-          '192.168.34.9': { ansible_ssh_host: '192.168.34.9', ansible_ssh_port: 22,  \
-              ansible_ssh_user: 'cloud-user',  \
-              ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key' }, \
-          '192.168.34.10': { ansible_ssh_host: '192.168.34.10', ansible_ssh_port: 22,  \
-              ansible_ssh_user: 'cloud-user',  \
-              ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key' }, \
-      }, \
+      cloud: vagrant, data_iface: eth0, kafka_inventory_file: './kafka-inventory' \
     }" site.yml
 ```
 
@@ -52,26 +43,7 @@ Alternatively, rather than passing all of those arguments in on the command-line
 ```yaml
 cloud: vagrant
 data_iface: eth0
-kafka_nodes:
-    - '192.168.34.8'
-    - '192.168.34.9'
-    - '192.168.34.10'
-kafka_inventory:
-    '192.168.34.8':
-        ansible_ssh_host: '192.168.34.8'
-        ansible_ssh_port: 22
-        ansible_ssh_user: 'cloud-user'
-        ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key'
-    '192.168.34.9':
-        ansible_ssh_host: '192.168.34.9'
-        ansible_ssh_port: 22
-        ansible_ssh_user: 'cloud-user'
-        ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key'
-    '192.168.34.10':
-        ansible_ssh_host: '192.168.34.10'
-        ansible_ssh_port: 22
-        ansible_ssh_user: 'cloud-user'
-        ansible_ssh_private_key_file: 'keys/kafka_cluster_private_key'
+kafka_inventory_file: './kafka-inventory'
 ```
 
 and then we can pass in the *local variables file* as an argument to the `ansible-playbook` command; assuming the YAML file shown above was in the current working directory and was named `test-multi-node-deployment-params.yml`, the resulting command would look something like this:
