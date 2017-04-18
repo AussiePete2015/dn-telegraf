@@ -23,17 +23,15 @@ end
 
 # a function that is used to parse Ansible (static) inventory files and
 # return a list of the node addresses contained in the file
-def addr_list_from_inventory_file(inventory_file)
-  first_field_list = []
-  File.open(inventory_file, 'r') do |f|
-    f.each_line do |line|
-      # grab the first field from each line
-      first_field_list << line.gsub(/\s+/, ' ').strip.split(" ")[0]
-    end
-  end
-  # return the entries that look like IP addresses (skipping the rest)
-  # and only return the unique values in the resulting list
-  first_field_list.select { |addr| (addr =~ Resolv::IPv4::Regex) }.uniq
+def addr_list_from_inventory_file(inventory_file, group_name)
+  inventory_str = `./common-utils/inventory/static/hostsfile.py --filename #{inventory_file} --list`
+  inventory_json = JSON.parse(inventory_str)
+  inventory_group = inventory_json[group_name]
+  # if we found a corresponding group in the inventory file, then
+  # return the hosts list in that group
+  return inventory_group['hosts'] if inventory_group
+  # otherwise, return the keys in the 'hostvars' hash map under the '_meta' hash map
+  inventory_json['_meta']['hostvars'].keys
 end
 
 options = {}
@@ -186,7 +184,7 @@ if provisioning_command || ip_required
           exit 1
         else
           # parse the inventory file that was passed in and retrieve the list of host addresses from it
-          kafka_addr_array = addr_list_from_inventory_file(options[:inventory_file])
+          kafka_addr_array = addr_list_from_inventory_file(options[:inventory_file], 'kafka')
           if kafka_addr_array.size == 0
             print "ERROR; an inventory file containing information for one or more kafka nodes must be\n"
             print "       passed in when provisioning Telegraf agents\n"
@@ -262,7 +260,7 @@ if telegraf_addr_array.size > 0
               data_iface: "eth1",
               host_inventory: telegraf_addr_array,
               kafka_inventory_file: options[:inventory_file],
-              cloud: "vagrant"
+              inventory_type: "static"
             }
             # if defined, set the 'extra_vars[:telegraf_url]' value to the value that was passed in on
             # the command-line (eg. "https://10.0.2.2/tmp/telegraf")

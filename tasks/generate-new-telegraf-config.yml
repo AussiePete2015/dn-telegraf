@@ -32,7 +32,7 @@
       - { regexp: '^(#)?(.*)precision = (.*)$' , replace: '\g<2>precision = "1ns"' }
       - { regexp: '^(#)?(.*)kafka(.*)$' , replace: '\g<2>kafka\g<3>' }
       - { regexp: '^(#)?(.*)topic = "telegraf"(.*)$' , replace: '\g<2>topic = "metrics"\g<3>' }
-      - { regexp: '^(#)?(.*)localhost(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<3>' }
+      - { regexp: '^(#)?(.*?)(localhost)?(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<4>' }
       - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
       - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>' }
   - name: Configure telegraf to report logs to Kafka
@@ -48,7 +48,7 @@
       - { regexp: '^(#)?(.*)custom_pattern_files = (.*)$' , replace: '\g<2># custom_pattern_files = \g<3>' }
       - { regexp: '^(#)?(.*)kafka(.*)$' , replace: '\g<2>kafka\g<3>' }
       - { regexp: '^(#)?(.*)topic = "telegraf"(.*)$' , replace: '\g<2>topic = "logs"\g<3>' }
-      - { regexp: '^(#)?(.*)localhost(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<3>' }
+      - { regexp: '^(#)?(.*?)(localhost)?(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<4>' }
       - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
       - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>' }
   # finally, add the json_timestamp_units to both configuration files

@@ -7,12 +7,12 @@ Let's assume that we are planning to deploy Telegraf agents to three nodes using
 In our discussion of the various deployment scenarios supported by this playbook, we show that deployments of Telegraf agents to nodes actually require an associated (assumed to be external) Kafka cluster that those agents will report the logs/metrics that they gather to. For purposes of this discussion, we will focus only on the inventory information associated with the nodes we are deploying our Telegraf agents to, not on the inventory information associated with the Kafka cluster. So, returning to our example, the inventory file associated with our three target nodes might look something like this:
 
 ```bash
-$ cat test-cluster-inventory
+$ cat test-telegraf-inventory
 # example inventory file for a multi-node deployment
 
-192.168.34.18 ansible_ssh_host= 192.168.34.18 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
-192.168.34.19 ansible_ssh_host= 192.168.34.19 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
-192.168.34.20 ansible_ssh_host= 192.168.34.20 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.18 ansible_ssh_host=192.168.34.18 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.19 ansible_ssh_host=192.168.34.19 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.20 ansible_ssh_host=192.168.34.20 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 
 $
 ```
