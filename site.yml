@@ -18,14 +18,14 @@
         host_group_list:
           - name: telegraf
           - name: kafka
-      when: cloud == 'aws' or cloud == 'osp'
+      when: inventory_type == 'dynamic'
     - include_role:
         name: build-app-host-groups
       vars:
         host_group_list:
           - { name: telegraf, node_list: "{{host_inventory}}" }
           - { name: kafka, inventory_file: "{{kafka_inventory_file}}" }
-      when: cloud == 'vagrant'
+      when: inventory_type == 'static'
 
 # Collect the 'hostvars' facts from the kafka host group
 - name: Gather facts from kafka host group

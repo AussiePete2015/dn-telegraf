@@ -3,18 +3,65 @@ A [Vagrantfile](../Vagrantfile) is included in this repository that can be used 
 
 ```bash
 $ vagrant -a="192.168.34.88" \
-    -i="./kafka_inventory" up
+    -i='./kafka_inventory' up
 ```
 
-Note that the `-a, --addr-list` flag must be used to pass an IP address (or a comma-separated list of IP addresses) into the [Vagrantfile](../Vagrantfile). In the example shown above, we are performing a single-node deployment of Telegraf, when we are performing a multi-node deployment, then we simply need to expand the list of comma-separated values passe in using the `-a, --addr-list` flag:
+Note that the `-a, --addr-list` flag must be used to pass an IP address (or a comma-separated list of IP addresses) into the [Vagrantfile](../Vagrantfile). In the example shown above, we are performing a single-node deployment of Telegraf, when we are performing a multi-node deployment, then we simply need to expand the list of comma-separated values passed in using the `-a, --addr-list` flag:
 
 ```bash
 $ vagrant -a="192.168.34.88,192.168.34.89,192.168.34.90" \
-    -k="192.168.34.8,192.168.34.9,192.168.34.10" \
     -i="./kafka_inventory" up
 ```
 
-This command will three-nodes, deployt Telegraf agents to all three of those nodes, and configure those agents to report the metrics and logs information that they are gathering to the Kafka instance or cluster that is described in the static inventory that we are passing into the `vagrant ... up` command shown here using the `-i, --inventory-file` flag. The argument passed in using this flag **must** point to an Ansible (static) inventory file containing the information needed to connect to the nodes in that Kafka cluster (so that the playbook can gather facts about those nodes to configure the Telegraf agents to report the meta-data they are gathering to that cluster). If this inventory file is not provided when building a multi-node cluster, or if the file passed in does not contain the information needed to connect to one or more Kafka nodes, then an error will be thrown by the `vagrant` command.
+Note that both of these commands deploy Telegraf agents to the target node or nodes, configuring those agents to report the metrics and logs information that they are gathering to the Kafka instance or cluster that is described in the static inventory that is passed into the `vagrant ... up` command using the `-i, --inventory-file` flag. The argument passed in using this flag **must** point to an Ansible (static) inventory file containing the information needed to connect to the nodes in that Kafka cluster (so that the playbook can gather facts about those nodes to configure the Telegraf agents to report the meta-data they are gathering to that cluster).  As was mentioned in the discussion of provisioning Telegraf agents to a set of target nodes using a static inventory file in the [Deployment-Scenarios.md](Deployment-Scenarios.md) file, this inventory file could just contain a list of the nodes in the Kafka cluster and the information needed to connect to those nodes:
+
+```bash
+$ cat kafka_inventory
+# example inventory file for a clustered deployment
+
+192.168.34.8 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2203 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.8/virtualbox/private_key'
+192.168.34.9 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2204 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.9/virtualbox/private_key'
+192.168.34.10 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2205 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.10/virtualbox/private_key'
+
+$
+```
+
+Or it could contain the combined information for the nodes being targeted for the deployment of Telegraf agents and the members of the Kafka cluster, with the hosts broken out into `telegraf` and `kafka` host groups:
+
+```bash
+$ cat combined_inventory
+# example combined inventory file for clustered deployment
+
+192.168.34.8 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2203 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.8/virtualbox/private_key'
+192.168.34.9 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2204 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.9/virtualbox/private_key'
+192.168.34.10 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2205 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.10/virtualbox/private_key'
+192.168.34.88 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2203 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.88/virtualbox/private_key'
+192.168.34.89 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2204 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.89/virtualbox/private_key'
+192.168.34.90 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2205 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.90/virtualbox/private_key'
+192.168.34.91 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2206 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.91/virtualbox/private_key'
+192.168.34.92 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2207 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.92/virtualbox/private_key'
+192.168.34.93 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2208 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.93/virtualbox/private_key'
+192.168.34.94 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2209 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.94/virtualbox/private_key'
+
+[telegraf]
+192.168.34.88
+192.168.34.89
+192.168.34.90
+192.168.34.91
+192.168.34.92
+192.168.34.93
+192.168.34.94
+
+[kafka]
+192.168.34.8
+192.168.34.9
+192.168.34.10
+
+```
+
+If the inventory file is similar to the first example, then all of the nodes in that inventory file will be assumed to be a part of the Kafka cluster if that file is passed in using the `-i, --inventory-file` flag. If the inventory file passed in using the `-i, --inventory-file` flag is more like the second example, then only the hosts in the `kafka` host group list will be included in the `kafka` host group that is build dynamically within the `ansible-playbook` run that is triggered by the `vagrant ... up` or `vagrant ... provision` command.
+
+If a Kafka inventory file is not provided when building a multi-node cluster, or if the file passed in does not contain the information needed to connect to one or more Kafka nodes, then an error will be thrown by the `vagrant` command.
 
 In terms of how it all works, the [Vagrantfile](../Vagrantfile) is written in such a way that the following sequence of events occurs when the `vagrant ... up` command shown above is run:
 
@@ -42,7 +89,7 @@ To provision Telegraf agents to the machines that were created above and configu
 
 ```bash
 $ vagrant -s="192.168.34.88,192.168.34.89,192.168.34.90" \
-    -i="./kafka_inventory" provision
+    -i="./combined_inventory" provision
 ```
 
 That command will attach to the named instances and run the playbook in this repository's [site.yml](../site.yml) file on those node, resulting in the deployment of Telegraf agents to the nodes that were created in the `vagrant ... up --no-provision` command that was shown, above.
