@@ -34,7 +34,7 @@
 
 # Then, deploy our Telegraf agents to the nodes in the `host_inventory` that was passed in
 - name: Install/configure telegraf agents
-  hosts: telegraf
+  hosts: telegraf:&telegraf_nodes
   gather_facts: no
   vars_files:
     - vars/telegraf.yml
