@@ -50,4 +50,4 @@
     environment: "{{environment_vars}}"
     when: update_from_url
   become: true
-  when: (update_from_dir is defined and (local_telegraf_file | basename) == 'telegraf') or (update_from_url is defined and (telegraf_url | basename) == 'telegraf')
+  when: (update_from_dir is defined and ((local_telegraf_file | default('')) | basename) == 'telegraf') or (update_from_url is defined and ((telegraf_url | default('')) | basename) == 'telegraf')
