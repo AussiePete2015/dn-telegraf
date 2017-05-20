@@ -28,10 +28,9 @@ def addr_list_from_inventory_file(inventory_file, group_name)
   inventory_json = JSON.parse(inventory_str)
   inventory_group = inventory_json[group_name]
   # if we found a corresponding group in the inventory file, then
-  # return the hosts list in that group
-  return inventory_group['hosts'] if inventory_group
-  # otherwise, return the keys in the 'hostvars' hash map under the '_meta' hash map
-  inventory_json['_meta']['hostvars'].keys
+  # return the hosts list in that group, otherwise, return the keys
+  # in the 'hostvars' hash map under the '_meta' hash map
+  (inventory_group ? inventory_group['hosts'] : inventory_json['_meta']['hostvars'].keys)
 end
 
 options = {}
@@ -183,7 +182,8 @@ if provisioning_command || ip_required
           print "       provisioning Telegraf agents\n"
           exit 1
         else
-          # parse the inventory file that was passed in and retrieve the list of host addresses from it
+          # parse the inventory file that was passed in and retrieve the list
+          # of kafka addresses from it
           kafka_addr_array = addr_list_from_inventory_file(options[:inventory_file], 'kafka')
           if kafka_addr_array.size == 0
             print "ERROR; an inventory file containing information for one or more kafka nodes must be\n"
@@ -233,9 +233,11 @@ if telegraf_addr_array.size > 0
     # creating VMs, create a VM for each machine; if we're just provisioning the
     # VMs using an ansible playbook, then wait until the last VM in the loop and
     # trigger the playbook runs for all of the nodes simultaneously using the
-    # `site.yml` playbook
+    # `provision-telegraf.yml` playbook
     telegraf_addr_array.each do |machine_addr|
       config.vm.define machine_addr do |machine|
+        # disable the default synced folder
+        machine.vm.synced_folder ".", "/vagrant", disabled: true
         # create a private network, which each allow host-only access to the machine
         # using a specific IP.
         machine.vm.network "private_network", ip: machine_addr
@@ -243,10 +245,18 @@ if telegraf_addr_array.size > 0
         # all of the nodes simultaneously (if the `--no-provision` flag was not
         # set, of course)
         if machine_addr == telegraf_addr_array[-1]
-          # and provision our Telegraf node using the Ansible playbook in the site.yml file
+          if options[:inventory_file]
+            if !File.directory?('.vagrant/provisioners/ansible/inventory')
+              mkdir_output = `mkdir -p .vagrant/provisioners/ansible/inventory`
+            end
+            ln_output = `ln -sf #{File.expand_path(options[:inventory_file])} .vagrant/provisioners/ansible/inventory`
+          end
+          # now, use the playbook in the `provision-telegraf.yml' file to
+          # provision our nodes with two Telegraf agents (and configure them
+          # to report the metrics they collect defined Kafka cluster)
           machine.vm.provision "ansible" do |ansible|
             ansible.limit = "all"
-            ansible.playbook = "site.yml"
+            ansible.playbook = "provision-telegraf.yml"
             ansible.groups = {
               telegraf: telegraf_addr_array
             }
@@ -257,10 +267,7 @@ if telegraf_addr_array.size > 0
                 proxy_username: proxy_username,
                 proxy_password: proxy_password
               },
-              data_iface: "eth1",
-              host_inventory: telegraf_addr_array,
-              kafka_inventory_file: options[:inventory_file],
-              inventory_type: "static"
+              data_iface: "eth1"
             }
             # if defined, set the 'extra_vars[:telegraf_url]' value to the value that was passed in on
             # the command-line (eg. "https://10.0.2.2/tmp/telegraf")

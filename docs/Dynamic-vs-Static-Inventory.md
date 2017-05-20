@@ -7,16 +7,29 @@ Let's assume that we are planning to deploy Telegraf agents to three nodes using
 In our discussion of the various deployment scenarios supported by this playbook, we show that deployments of Telegraf agents to nodes actually require an associated (assumed to be external) Kafka cluster that those agents will report the logs/metrics that they gather to. For purposes of this discussion, we will focus only on the inventory information associated with the nodes we are deploying our Telegraf agents to, not on the inventory information associated with the Kafka cluster. So, returning to our example, the inventory file associated with our three target nodes might look something like this:
 
 ```bash
-$ cat test-telegraf-inventory
-# example inventory file for a multi-node deployment
+$ cat combined-inventory
+# example combined inventory file for clustered deployment
 
+192.168.34.8 ansible_ssh_host=192.168.34.8 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/kafka_cluster_private_key'
+192.168.34.9 ansible_ssh_host=192.168.34.9 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/kafka_cluster_private_key'
+192.168.34.10 ansible_ssh_host=192.168.34.10 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/kafka_cluster_private_key'
 192.168.34.18 ansible_ssh_host=192.168.34.18 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 192.168.34.19 ansible_ssh_host=192.168.34.19 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 192.168.34.20 ansible_ssh_host=192.168.34.20 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 
-$
+[kafka]
+192.168.34.8
+192.168.34.9
+192.168.34.10
+
+[telegraf]
+192.168.34.18
+192.168.34.19
+192.168.34.20
+
 ```
-As you can see, our static inventory file consists of a list of the hosts targeted by our deployment. For each host in this file, we provide a list of the parameters that Ansible will need to connect to that host (INI-file style) as a set of `name=value` pairs. In this example, we've defined the following values for each of the entries in our static inventory file:
+
+As you can see, our static inventory file consists of a list of the hosts targeted by our deployment followed by two host groups (the `telegraf` and `kafka` host groups). For each host in this file, we provide a list of the parameters that Ansible will need to connect to that host (INI-file style) as a set of `name=value` pairs. In this example, we've defined the following values for each of the entries in our static inventory file:
 
 * **`ansible_ssh_host`**: the hostname/address that Ansible should use to connect to that host; if not specified, the same hostname/address listed at the start of the line for that entry for that host will be used (in this example we are using IP addresses). This parameter can be important when there are multiple network interfaces on each host and only one of them (an admin network, for example) allows for SSH access
 * **`ansible_ssh_port`**: the port that Ansible should use when connecting to the host via SSH; if not specified, Ansible will attempt to connect using the default SSH port (port 22)
@@ -26,7 +39,7 @@ As you can see, our static inventory file consists of a list of the hosts target
 With this static inventory file built, it's a relatively simple matter to provision Telegraf agents to those nodes using a single `ansible-playbook` command. Examples of these commands are shown [here](Deployment-Scenarios.md).
 
 ## Managing deployments using dynamic inventory scripts
-For both AWS and OpenStack environments, the playbook in this repository supports the use of a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html) to control deployments to those environments. This is accomplished by making use of the [build-app-host-groups](../common-roles/build-app-host-groups) common role, which in turn uses the dynamic inventory scripts that are included for these two types of environments in the [common-utils](../common-utils) submodule. These scripts return lists of the nodes that should be targeted by a given playbook run, and the [build-app-host-groups](../common-roles/build-app-host-groups) common role filters those lists, based on the tags that are assigned them and the tags that are included in the `ansible-playbook` command, to construct the host groups needed for a given deployment. This provides an attractive alternative to building static inventory files to control the deployment process in these environments, since the meta-data needed to determine which nodes should be targeted by a given playbook run is readily available in the framework itself.
+For both AWS and OpenStack environments, the playbook in this repository supports the use of a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html) to control deployments to those environments. This is accomplished by making use of the [build-app-host-groups](../common-roles/build-app-host-groups) common role, which builds the host groups that are needed for the playbook run by filtering the hosts in the AWS or OpenStack environment, based on the tags that are assigned them and the tags that were included in the `ansible-playbook` command. This provides an attractive alternative to building static inventory files to control the deployment process in these environments, since the meta-data needed to determine which nodes should be targeted by a given playbook run is readily available in the framework itself.
 
 The process of using the [build-app-host-groups](../common-roles/build-app-host-groups) common role to control a playbook run starts out by tagging the VMs that are going to be the target of a particular deployment with the following tags:
 

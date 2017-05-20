@@ -23,43 +23,13 @@ $ cat kafka_inventory
 192.168.34.9 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2204 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.9/virtualbox/private_key'
 192.168.34.10 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2205 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.10/virtualbox/private_key'
 
-$
-```
-
-Or it could contain the combined information for the nodes being targeted for the deployment of Telegraf agents and the members of the Kafka cluster, with the hosts broken out into `telegraf` and `kafka` host groups:
-
-```bash
-$ cat combined_inventory
-# example combined inventory file for clustered deployment
-
-192.168.34.8 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2203 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.8/virtualbox/private_key'
-192.168.34.9 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2204 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.9/virtualbox/private_key'
-192.168.34.10 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2205 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-kafka/.vagrant/machines/192.168.34.10/virtualbox/private_key'
-192.168.34.88 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2203 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.88/virtualbox/private_key'
-192.168.34.89 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2204 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.89/virtualbox/private_key'
-192.168.34.90 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2205 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.90/virtualbox/private_key'
-192.168.34.91 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2206 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.91/virtualbox/private_key'
-192.168.34.92 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2207 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.92/virtualbox/private_key'
-192.168.34.93 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2208 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.93/virtualbox/private_key'
-192.168.34.94 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2209 ansible_ssh_user='vagrant' ansible_ssh_private_key_file='/tmp/dn-spark/.vagrant/machines/192.168.34.94/virtualbox/private_key'
-
-[telegraf]
-192.168.34.88
-192.168.34.89
-192.168.34.90
-192.168.34.91
-192.168.34.92
-192.168.34.93
-192.168.34.94
-
 [kafka]
 192.168.34.8
 192.168.34.9
 192.168.34.10
 
+$
 ```
-
-If the inventory file is similar to the first example, then all of the nodes in that inventory file will be assumed to be a part of the Kafka cluster if that file is passed in using the `-i, --inventory-file` flag. If the inventory file passed in using the `-i, --inventory-file` flag is more like the second example, then only the hosts in the `kafka` host group list will be included in the `kafka` host group that is build dynamically within the `ansible-playbook` run that is triggered by the `vagrant ... up` or `vagrant ... provision` command.
 
 If a Kafka inventory file is not provided when building a multi-node cluster, or if the file passed in does not contain the information needed to connect to one or more Kafka nodes, then an error will be thrown by the `vagrant` command.
 
@@ -74,7 +44,7 @@ Once the playbook run triggered by the [Vagrantfile](../Vagrantfile) is complete
 So, to recap, by using a single `vagrant ... up` command we were able to quickly deploy Telegraf agents to multiple nodes and configure those agents to report their metrics/logs back to our Kafka cluster. A similar `vagrant ... up` command could be used to deploy Telegraf agents to any number of nodes, provided that a Kafka cluster has already been provisioned that those agents can report to.
 
 ## Separating instance creation from provisioning
-While the `vagrant up` commands that are shown above can be used to easily deploy Telegraf agents to any number of nodes, the [Vagrantfile](../Vagrantfile) included in this distribution also supports separating out the creation of the virtual machine from the provisioning of that virtual machine using the Ansible playbook contained in this repository's [site.yml](../site.yml) file.
+While the `vagrant up` commands that are shown above can be used to easily deploy Telegraf agents to any number of nodes, the [Vagrantfile](../Vagrantfile) included in this distribution also supports separating out the creation of the virtual machine from the provisioning of that virtual machine using the Ansible playbook contained in this repository's [provision-telegraf.yml](../provision-telegraf.yml) file.
 
 To create a set of virtual machines that we plan on deploying Telegraf agents to without provisioning those machines with Telegraf agents, simply run a command similar to the following:
 
@@ -92,7 +62,7 @@ $ vagrant -s="192.168.34.88,192.168.34.89,192.168.34.90" \
     -i="./combined_inventory" provision
 ```
 
-That command will attach to the named instances and run the playbook in this repository's [site.yml](../site.yml) file on those node, resulting in the deployment of Telegraf agents to the nodes that were created in the `vagrant ... up --no-provision` command that was shown, above.
+That command will attach to the named instances and run the playbook in this repository's [provision-telegraf.yml](../provision-telegraf.yml) file on those node, resulting in the deployment of Telegraf agents to the nodes that were created in the `vagrant ... up --no-provision` command that was shown, above.
 
 ## Additional vagrant deployment options
 While the commands shown above will install Telegraf agents to one or more nodes with a reasonable, default configuration from a standard location, there are additional command-line parameters that can be used to control the deployment process triggered by a `vagrant ... up` or `vagrant ... provision` command. Here is a complete list of the command-line flags that can be supported by the [Vagrantfile](../Vagrantfile) in this repository:

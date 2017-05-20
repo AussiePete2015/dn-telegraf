@@ -2,7 +2,7 @@
 Playbooks/Roles used to deploy a pair of [Telegraf](https://github.com/influxdata/telegraf) agents to a node (one for metrics gathering and reporting, another for gathering and reporting logs)
 
 # Installation
-To install a Telegraf agents using the `site.yml` playbook in this repository, first clone the contents of this repository to a local directory using a command like the following:
+To install a Telegraf agents using the [provision-telegraf.yml](provision-telegraf.yml) playbook in this repository, first clone the contents of this repository to a local directory using a command like the following:
 
 ```bash
 $ git clone --recursive https://github.com/Datanexus/dn-telegraf
@@ -13,7 +13,7 @@ That command will pull down the repository and it's dependencies. Currently this
 The only other requirements for using the playbook in this repository are a relatively recent (v2.x) release of Ansible. The easiest way to obtain a recent relese if Ansible is via a `pip install`, which requires that Python and pip are both installed locally. We have performed all of our testing using a recent (2.7.x) version of Python (Python 2); your mileage may vary if you attempt to run the playbook or the attached dynamic inventory scripts under a newer (v3.x) release of Python (Python 3).
 
 # Using this role to deploy Telegraf agents
-The [site.yml](site.yml) file at the top-level of this repository supports the deployment of a pair of agents to each target node, one for gathering and reporting metrics and the other for gathering and reporting logs. The process of deploying these Telegraf agents will vary, depending on whether you are managing your inventory dynamically or statically (more on this topic [here](docs/Dynamic-vs-Static-Inventory.md)) as well as where you are downloading any additional packages from that may have been requested by the user as part of a playbook run.
+The [provision-telegraf.yml](provision-telegraf.yml) file at the top-level of this repository supports the deployment of a pair of agents to each target node, one for gathering and reporting metrics and the other for gathering and reporting logs. The process of deploying these Telegraf agents will vary, depending on whether you are managing your inventory dynamically or statically (more on this topic [here](docs/Dynamic-vs-Static-Inventory.md)) as well as where you are downloading any additional packages from that may have been requested by the user as part of a playbook run.
 
 We discuss the various deployment scenarios supported by this playbook in [this document](docs/Deployment-Scenarios.md) and discuss how the [Vagrantfile](Vagrantfile) in this repository can be used to deploy Telegraf agents to a set of VMs hosted locally in VirtualBox [here](docs/Deployment-via-Vagrant.md).
 
