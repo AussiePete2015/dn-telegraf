@@ -21,7 +21,7 @@ $ cat combined-inventory
 192.168.34.9
 192.168.34.10
 
-[telegraf]
+[zookeeper]
 192.168.34.18
 192.168.34.19
 192.168.34.20
@@ -32,7 +32,7 @@ To deploy Telegraf agents to the three nodes in our static inventory file, we'd 
 
 ```bash
 $ ansible-playbook -i combined-inventory -e "{ \
-      data_iface: eth0, \
+      application: zookeeper, data_iface: eth0, \
       telegraf_url: 'http://192.168.34.254/telegraf/linux_amd64/telegraf' \
       yum_repo_url: 'http://192.168.34.254/centos' \
     }" provision-telegraf.yml
@@ -41,6 +41,7 @@ $ ansible-playbook -i combined-inventory -e "{ \
 Alternatively, rather than passing all of those arguments in on the command-line as extra variables, we can make use of the *local variables file* support that is built into this playbook and construct a YAML file that looks something like this containing the configuration parameters that are being used for this deployment:
 
 ```yaml
+application: zookeeper
 data_iface: eth0
 telegraf_url: 'http://192.168.34.254/telegraf/linux_amd64/telegraf'
 yum_repo_url: 'http://192.168.34.254/centos'

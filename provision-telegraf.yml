@@ -6,23 +6,30 @@
 - name: Create telegraf and kafka host groups
   hosts: localhost
   gather_facts: no
+  vars_files:
+    - vars/telegraf.yml
   tasks:
+    # always load the 'local variables file', if one was defined, to get any
+    # variables we might need from that file when constructing our host groups
+    - name: Load local variables file
+      include_vars:
+        file: "{{local_vars_file}}"
+      when: not (local_vars_file is undefined or local_vars_file is none or local_vars_file | trim == '')
+    # regardless of whether the `application` value is still set to the default
+    # `telegraf` value from the `vars/telegraf.yml` file or was reset in the
+    # input `local_vars_file` (above), set a fact for the `localhost` so that
+    # we can use it in our third play (below) to define the target hosts that
+    # we are provisioning with Telegraf agents to using this playbook
+    - set_fact:
+        application: "{{application}}"
     # if we're using dynamic provisioning; build the host groups from the
     # meta-data associated with the matching nodes in the selected cloud
-    - block:
-      # load the 'local variables file', if one was defined, to get any variables
-      # we might need from that file when constructing our host groups
-      - name: Load local variables file
-        include_vars:
-          file: "{{local_vars_file}}"
-        when: not (local_vars_file is undefined or local_vars_file is none or local_vars_file | trim == '')
-      # then, build our host groups
-      - include_role:
-          name: build-app-host-groups
-        vars:
-          host_group_list:
-            - { name: "{{application}}", as_name: telegraf }
-            - name: kafka
+    - include_role:
+        name: build-app-host-groups
+      vars:
+        host_group_list:
+          - { name: "{{application}}" }
+          - name: kafka
       when: cloud is defined and (cloud == 'aws' or cloud == 'osp')
 
 # Collect the 'hostvars' facts from the kafka host group
@@ -30,9 +37,11 @@
   hosts: kafka
   tasks: []
 
-# Then, deploy our Telegraf agents to the nodes in the `host_inventory` that was passed in
+# Then, deploy our Telegraf agents to the nodes in the application host group
+# that was passed in (or 'the 'telegraf' host group if a separate `application`
+# target wasn't defined in the local variables file)
 - name: Install/configure telegraf agents
-  hosts: telegraf
+  hosts: "{{hostvars['localhost']['application']}}"
   gather_facts: no
   vars_files:
     - vars/telegraf.yml
@@ -65,7 +74,7 @@
         iface_descriptions: "{{iface_description_array}}"
       when: not (iface_description_array is undefined or iface_description_array == [])
     # and now that we know we have our data_iface identified, we can construct
-    # the list of zk_nodes (the data_iface IP addresses of our kafka_nodes)
+    # the list of kfka_nodes (the data_iface IP addresses of our kafka_nodes)
     - set_fact:
         kfka_nodes: "{{(kafka_nodes | default([])) | map('extract', hostvars, [('ansible_' + data_iface), 'ipv4', 'address']) | list}}"
     # if we're provisioning a RHEL machine, then we need to ensure that
