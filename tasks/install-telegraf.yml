@@ -15,7 +15,7 @@
   yum:
     name: telegraf
     state: present
-  environment: "{{environment_vars}}"
+  environment: "{{environment_vars | default({})}}"
 # and, if either the local file path of a URL was provided
 # and that path ends in 'telegraf', backup the default telegraf
 # executable that was installed from the package, then upload
@@ -47,7 +47,7 @@
       dest: /usr/bin/telegraf
       mode: 0755
       validate_certs: no
-    environment: "{{environment_vars}}"
+    environment: "{{environment_vars | default({})}}"
     when: update_from_url is defined and update_from_url
   become: true
   when: (update_from_dir is defined and ((local_telegraf_file | default('')) | basename) == 'telegraf') or (update_from_url is defined and ((telegraf_url | default('')) | basename) == 'telegraf')

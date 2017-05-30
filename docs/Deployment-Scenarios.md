@@ -1,6 +1,6 @@
 # Example deployment scenarios
 
-There are a two basic deployment scenarios that are supported by this playbook. In the first scenario (shown below) we'll walk through the deployment of a pair of Telegraf agents to one or more nodes using a static inventory file. In the second scenario, we will show how that same deployment could be performed using the dynamic inventory scripts for both AWS and OpenStack instead of a static inventory file.
+There are a three basic deployment scenarios that are supported by this playbook. In the first scenario (shown below) we'll walk through the deployment of a pair of Telegraf agents to one or more nodes using a static inventory file. In the second scenario, we will show how that same deployment could be performed using the dynamic inventory scripts for both AWS and OpenStack instead of a static inventory file. Finally, in the third scenario we will show how the playbooks in this repository can be used to "grow" the number of nodes that these Telegraf agents are deployed to.
 
 ## Scenario #1: Using static inventory to control a Telegraf deployment
 In this scenario, let's assuming that we're deploying our Telegraf agents to a set of three nodes and configuring those Telegraf agents to report the metrics that they gather to a Kafka cluster that also consists of three nodes. Furthermore, let's assume that we're going to be using a static inventory file to control our Telegraf deployment. The static inventory file that we will be using for this example looks like this:
@@ -12,9 +12,12 @@ $ cat combined-inventory
 192.168.34.8 ansible_ssh_host=192.168.34.8 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/kafka_cluster_private_key'
 192.168.34.9 ansible_ssh_host=192.168.34.9 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/kafka_cluster_private_key'
 192.168.34.10 ansible_ssh_host=192.168.34.10 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/kafka_cluster_private_key'
+
 192.168.34.18 ansible_ssh_host=192.168.34.18 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 192.168.34.19 ansible_ssh_host=192.168.34.19 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 192.168.34.20 ansible_ssh_host=192.168.34.20 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.21 ansible_ssh_host=192.168.34.21 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
+192.168.34.22 ansible_ssh_host=192.168.34.22 ansible_ssh_port=22 ansible_ssh_user='cloud-user' ansible_ssh_private_key_file='keys/zk_cluster_private_key'
 
 [kafka]
 192.168.34.8
@@ -106,3 +109,61 @@ $ AWS_PROFILE=datanexus_west ansible-playbook -e "{ \
 ```
 
 As you can see, these two commands only differ in terms of the environment variable defined at the beginning of the command-line used to provision to the AWS environment (`AWS_PROFILE=datanexus_west`) and the value defined for the `cloud` variable (`osp` versus `aws`). In both cases the result would be the deployment of a pair of Telegraf agents to the set of with tags that match the input `application`, `tenant`, `project`, and `domain` tags. Those agents would be configured to report their metrics to the matching Kafka cluster. The number of nodes that will have Telegraf agents deployed to them will be determined (completely) by the number of nodes in the OpenStack or AWS environment that have been tagged with a matching set of `application`, `tenant`, `project` and `domain` tags.
+
+## Scenario #3: Deploying agents to additional nodes
+When deploying Telegraf agents to additional nodes, we must be careful of a couple of things:
+
+* We don't want to redeploy Telegraf agents to any nodes that already have Telegraf agents deployed to them, only to the nodes that don't have Telegraf agents deployed locally
+* We want to make sure the Telegraf agents that we are are deploying are configured consistently with those that have already been deployed to the same type of target nodes
+
+The process of deploying additional Telegraf agents is relatively simple. To make matters simpler (and ensure that there is no danger of reprovisioning the agents to nodes that already have Telegraf agents running locally), we have actually separated out the plays that are used to add Telegraf agents to new nodes into a separate playbook (the [add-nodes.yml](./add-nodes.yml) file in this repository).
+
+As was mentioned, above, we would really like to ensure that the configuration parameters passed in during the process of adding Telegraf agents to new target nodes are consistent with those used when the original Telegraf agents were deployed. This greatly simplifies the process of analyzing the meta-data that is being collected for different types of target nodes (Kafka nodes, Storm nodes, Spark nodes, Cassandra nodes, etc.). The easiest way to manage this is to use a *local inventory file* to manage the configuration parameters that are used when deploying Telegraf agents to a given type of node, then pass in that file as an argument to the `ansible-playbook` command that you are running to when adding Telegraf agents to new nodes of that type. That said, in the dynamic inventory examples we show (below) we will define the configuration parameters that were set to non-default values in the previous playbook runs as extra variables that are passed into the `ansible-playbook` command on the command-line for clarity.
+
+To provide a couple of examples of how this process of adding Telegraf agents to a new set of target nodes works, we would first like to walk through the process of adding Telegraf agents to two additional nodes in the Zookeeper ensemble example that was shown above. The first step would be to edit the static inventory file and add the two new nodes to the `zookeeper` host group, then save the resulting file. The host groups defined in the `combined-inventory` file shown above would look like this after those edits:
+
+```
+[kafka]
+192.168.34.8
+192.168.34.9
+192.168.34.10
+
+[zookeeper]
+192.168.34.18
+192.168.34.19
+192.168.34.20
+192.168.34.21
+192.168.34.22
+```
+
+(note that we have only shown the tail of that file; the hosts defined at the start of the file would remain the same). With the new static inventory file in place, the playbook command that we would run to add the three additional nodes to our cluster would look something like this:
+
+```bash
+$ ./add-nodes.yml -i combined-inventory -e "{ \
+      local_vars_file: 'test-cluster-deployment-params.yml' \
+    }"
+```
+
+As you can see, this is essentially the same command we ran previously to deploy our initial set of Telegraf agents in the static inventory scenario that was shown, above. The only change to the previous command are that we are using a different playbook (the [add-nodes.yml](../add-nodes.yml) playbook instead of the [provision-telegraf.yml](../provision-telegraf.yml) playbook).
+
+To add deploy Telegraf agents to a new set of nodes in an AWS or OpenStack environment, we would simply ensure that the new nodes we want to deploy Telegraf agents to in that environment are tagged them appropriately (using the same `Tenant`, `Application`, `Project`, and `Domain` tags that we used when creating our initial cluster). The command used to add a deploy Telegraf agents to a new set of target nodes to an existing cluster in an OpenStack environment would look something like this:
+
+```bash
+$ ansible-playbook -e "{ \
+        application: zookeeper, cloud: osp, \
+        tenant: labs, project: projectx, domain: preprod, \
+        private_key_path: './keys', data_iface: eth0 \
+    }" add-nodes.yml
+```
+
+The only difference when adding nodes to an AWS environment would be the environment variable that needs to be set at the beginning of the command-line (eg. `AWS_PROFILE=datanexus_west`) and the cloud value that we define within the extra variables that are passed into that `ansible-playbook` command (`aws` instead of `osp`):
+
+```bash
+$ AWS_PROFILE=datanexus_west ansible-playbook -e "{ \
+        application: zookeeper, cloud: aws, \
+        tenant: labs, project: projectx, domain: preprod, \
+        private_key_path: './keys', data_iface: eth0 \
+    }" add-nodes.yml
+```
+
+As was the case with the static inventory example shown above, the command shown here for adding Telegraf agents to a new set of target nodes in an AWS or OpenStack cloud (using tags and dynamic inventory) is essentially the same command that was used when deploying Telegraf agents to our initial set of similar nodes (above), but we are using a different playbook (the [add-nodes.yml](../add-nodes.yml) playbook instead of the [provision-telegraf.yml](../provision-telegraf.yml) playbook).
