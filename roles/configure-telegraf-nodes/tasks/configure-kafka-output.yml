@@ -1,0 +1,18 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+# Configure the Kafka output for the named `measurement_type`
+- set_fact:
+    kfka_nodes_str: "{{kfka_nodes | join(':9092\",\"')}}"
+- name: Configure telegraf to report metrics to Kafka
+  replace:
+    dest: /etc/telegraf/telegraf.d/telegraf-{{measurement_type}}.conf
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - { regexp: '^(#)?(.*)precision = (.*)$' , replace: '\g<2>precision = {{json_timestamp_units | default("1ns")}}' }
+    - { regexp: '^(#)?(.*)kafka(.*)$' , replace: '\g<2>kafka\g<3>' }
+    - { regexp: '^(#)?(.*)topic = "telegraf"(.*)$' , replace: '\g<2>topic = "metrics"\g<3>' }
+    - { regexp: '^(#)?(.*?)(localhost)?(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<4>' }
+    - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
+    - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>' }
+  become: true
