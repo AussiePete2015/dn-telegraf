@@ -17,11 +17,14 @@
       src: /usr/lib/systemd/system/.telegraf.service.bak
       dest: "/usr/lib/systemd/system/telegraf.service"
       remote_src: true
+  # if the measurements being gathered include logparser measurements, then
+  # setup the telegraf agent to run as root
   - name: Setup agent to run as root (needed to report logs)
     replace:
       dest: "/usr/lib/systemd/system/telegraf.service"
       regexp: '^(User.*)(telegraf)$'
       replace: '\g<1>root'
+    when: (configuration_list | selectattr("name", "defined") | selectattr("name", "equalto", "logparser") | list) != []
   - name: Restart systemctl daemon
     command: systemctl daemon-reload
   become: true

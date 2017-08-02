@@ -1,18 +1,36 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-# Configure the Kafka output for the named `measurement_type`
+# Configure the Kafka output for the named `measurement_set`; first set a few
+# facts that we'll need later
 - set_fact:
     kfka_nodes_str: "{{kfka_nodes | join(':9092\",\"')}}"
-- name: Configure telegraf to report metrics to Kafka
-  replace:
-    dest: /etc/telegraf/telegraf.d/telegraf-{{measurement_type}}.conf
-    regexp: "{{ item.regexp }}"
-    replace: "{{ item.replace }}"
-  with_items:
-    - { regexp: '^(#)?(.*)precision = (.*)$' , replace: '\g<2>precision = {{json_timestamp_units | default("1ns")}}' }
-    - { regexp: '^(#)?(.*)kafka(.*)$' , replace: '\g<2>kafka\g<3>' }
-    - { regexp: '^(#)?(.*)topic = "telegraf"(.*)$' , replace: '\g<2>topic = "metrics"\g<3>' }
-    - { regexp: '^(#)?(.*?)(localhost)?(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<4>' }
-    - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
-    - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>' }
+    precision: '{{(agent_config.config | default({})).precision | default("1ns")}}'
+    json_timestamp_units: '{{(measurement_set.config | default({})).json_timestamp_units | default("1ns")}}'
+    kafka_topic: '{{((measurement_set.config | default({})).kafka | default({})).topic | default("telegraf")}}'
+    input_filter_element_str: "{{(measurement_set.input_filter | default('')).split(':') | join('\", \"')}}"
+# Then customize the Kafka output section of the configuration file associated
+# with the input `measurement_set` file to include those parameters; it should
+# be noted here that the current version of the playbook only supports outputting
+# data in a JSON data format; to support other formats additional changes to this
+# task file will be necessary)
+- block:
+  - name: Configure telegraf to report metrics to Kafka
+    replace:
+      dest: "/etc/telegraf/telegraf.d/telegraf-{{measurement_set.name}}.conf"
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+    with_items:
+      - { regexp: '^(#)?(.*)precision = (.*)$' , replace: '\g<2>precision = "{{precision}}"' }
+      - { regexp: '^(#)?(.*)kafka(.*)$' , replace: '\g<2>kafka\g<3>' }
+      - { regexp: '^(#)?(.*)topic = "telegraf"(.*)$' , replace: '\g<2>topic = "{{kafka_topic}}"\g<3>' }
+      - { regexp: '^(#)?(.*?)(localhost)?(:9092.*)$' , replace: '\g<2>{{kfka_nodes_str}}\g<4>' }
+      - { regexp: '^([^#])(.*)routing_tag(.*)$' , replace: '#\g<1>\g<2>routing_tag\g<3>' }
+      - { regexp: '^(#)?(.*)data_format = "influx"(.*)$' , replace: '\g<2>data_format = "json"\g<3>\n\n\g<2>namepass = [ "{{input_filter_element_str}}" ]' }
+  - name: Add json_timestamp_units value to the Kafka output configuration
+    lineinfile:
+      dest: "/etc/telegraf/telegraf.d/telegraf-{{measurement_set.name}}.conf"
+      regexp: '^((\s+)data_format(.*))$'
+      line: '\g<1>\n\g<2>json_timestamp_units = "{{json_timestamp_units}}"'
+      backrefs: yes
+      state: present
   become: true

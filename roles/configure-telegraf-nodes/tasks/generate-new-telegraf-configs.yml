@@ -1,0 +1,27 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+# First, set a couple of facts we'll be using later in this play
+- set_fact:
+    measurement_set_configs: "{{configuration_list | selectattr('type', 'equalto', 'measurement_set') | list}}"
+    agent_config: "{{configuration_list | selectattr('type', 'equalto', 'agent') | list}}"
+# Then, generate a set of configuration files using the `telegraf` command
+# (one file per defined `measurement_set`) based on the input and output
+# filters defined in the `measurement_set_configs`
+- name: Generate a new telegraf configuration file for each measurement_set
+  shell: "telegraf -input-filter {{item.input_filter}} -output-filter {{item.output_filter}} config > /etc/telegraf/telegraf.d/telegraf-{{item.name}}.conf"
+  with_items: "{{measurement_set_configs}}"
+  become: true
+# Then, for each of the `measurement_sets` in the `measurement_set_configs`
+# list, customize the configuration file for that `measurement_set` based on
+# the `config` parameters defined for the inputs declared for that
+# `measurement_set`
+- include: configure-inputs.yml static=no
+  with_items: "{{measurement_set_configs}}"
+  loop_control:
+    loop_var: measurement_set
+# and repeat that process for the outputs declared in each of the
+# `measurement_sets` in the `measurement_set_configs` list
+- include: configure-outputs.yml static=no
+  with_items: "{{measurement_set_configs}}"
+  loop_control:
+    loop_var: measurement_set

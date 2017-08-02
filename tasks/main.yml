@@ -3,6 +3,7 @@
 - include: install-telegraf.yml static=no
 - include_role:
     name: configure-telegraf-nodes
-# - include: create-telegraf-service.yml static=no
-# - include: start-telegraf-service.yml static=no
-# - include: enable-telegraf-service.yml static=no
+    tasks_from: generate-new-telegraf-configs
+- include: create-telegraf-service.yml static=no
+- include: start-telegraf-service.yml static=no
+- include: enable-telegraf-service.yml static=no

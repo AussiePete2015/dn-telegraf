@@ -13,15 +13,33 @@ data_iface: 'eth0'
 # beginning (or not) when the agent starts
 log_parse_from_beginning: true
 
-# the default values for the input and output filters that should
-# be used when constructing the telegraf configuration files
-telegraf_measurements:
-  - type: 'metrics'
+# the default the configuration that should be used for the telegraf agent;
+# includes the agent configuration as well as the list of values that should
+# be collected and reported by the agent (the measurement_sets); for each
+# measurement_set, the input and output filters are defined along with any
+# input/output-specific configuration parameters that should be used when
+# constructing the configuration file for that measurement_set
+configuration_list:
+  - type: 'agent'
+    config:
+      precision: 1ns
+  - type: 'measurement_set'
+    name: 'metrics'
     input_filter: 'cpu:disk:diskio:kernel:mem:processes:swap:system'
     output_filter: 'kafka'
-  - type: 'logs'
+    config:
+      kafka:
+        topic: metrics
+        json_timestamp_units: 1ns
+  - type: 'measurement_set'
+    name: 'logparser'
     input_filter: 'logparser'
     output_filter: 'kafka'
-    log_paths: ['/var/log/**.log']
-    log_patterns:
-      CUSTOM_SYSLOG: '%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}'
+    config:
+      kafka:
+        topic: logs
+        json_timestamp_units: 1ns
+      logparser:
+        log_paths: ['/var/log/**.log']
+        log_patterns:
+          CUSTOM_SYSLOG: '%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}'

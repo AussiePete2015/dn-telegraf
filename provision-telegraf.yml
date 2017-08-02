@@ -28,7 +28,7 @@
         name: build-app-host-groups
       vars:
         host_group_list:
-          - { name: "{{application}}", filter_roles: "{{'false' | bool}}" }
+          - { name: "{{application}}" }
           - name: kafka
       when: cloud is defined and (cloud == 'aws' or cloud == 'osp')
 
