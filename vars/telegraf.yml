@@ -9,10 +9,6 @@ application: telegraf
 # with the Kafka/InfluxDB instances
 data_iface: 'eth0'
 
-# a flag indicating whether the logs should be parsed from the
-# beginning (or not) when the agent starts
-log_parse_from_beginning: true
-
 # the default the configuration that should be used for the telegraf agent;
 # includes the agent configuration as well as the list of values that should
 # be collected and reported by the agent (the measurement_sets); for each
