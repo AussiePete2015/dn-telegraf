@@ -1,10 +1,7 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-- name: Enable the telegraf agents on boot
+- name: Enable the telegraf agent on boot
   become: true
   service:
-    name: "telegraf-{{item}}"
+    name: "telegraf"
     enabled: yes
-  with_items:
-    - metrics
-    - logs

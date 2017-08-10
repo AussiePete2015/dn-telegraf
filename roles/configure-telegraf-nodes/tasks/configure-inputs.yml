@@ -1,0 +1,14 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+# Customize the inputs in the configuration file associated with the input
+# `measurement_set` for each of the `input_filter_element` values defined in
+# that `measurement_set`; customization is done based on the configuration
+# parameters that are defined in the `config` hash in that `measurement_set`
+# (if such configuration parameters exist)
+- set_fact:
+    input_filter_elements: "{{(measurement_set.input_filter | default('')).split(':')}}"
+- include: configure-input.yml static=no
+  with_items: "{{input_filter_elements}}"
+  loop_control:
+    loop_var: input_filter_entry
+  when: ((measurement_set.config | default({}))[input_filter_entry] | default({})) != {}

@@ -9,25 +9,33 @@ application: telegraf
 # with the Kafka/InfluxDB instances
 data_iface: 'eth0'
 
-# the default path to search for logfiles that should be reported
-# back using the telegraf-logs agent 
-log_paths: ['/var/log/**.log']
-
-# the hash of log patterns to look for when parsing logfiles (the key
-# will be used to identify each pattern and the value is the pattern
-# that you are interested in)
-log_patterns:
-  CUSTOM_SYSLOG: '%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}'
-
-# a flag indicating whether the logs should be parsed from the
-# beginning (or not) when the agent starts
-log_parse_from_beginning: true
-
-# the default values for the input and output filters that should
-# be used when constructing the telegraf configuration files
-input_filters:
-  metrics: 'cpu:disk:diskio:kernel:mem:processes:swap:system'
-  logs: 'logparser'
-output_filters:
-  metrics: 'kafka'
-  logs: 'kafka'
+# the default the configuration that should be used for the telegraf agent;
+# includes the agent configuration as well as the list of values that should
+# be collected and reported by the agent (the measurement_sets); for each
+# measurement_set, the input and output filters are defined along with any
+# input/output-specific configuration parameters that should be used when
+# constructing the configuration file for that measurement_set
+configuration_list:
+  - type: 'agent'
+    config:
+      precision: 1ns
+  - type: 'measurement_set'
+    name: 'metrics'
+    input_filter: 'cpu:disk:diskio:kernel:mem:processes:swap:system'
+    output_filter: 'kafka'
+    config:
+      kafka:
+        topic: metrics
+        json_timestamp_units: 1ns
+  - type: 'measurement_set'
+    name: 'logparser'
+    input_filter: 'logparser'
+    output_filter: 'kafka'
+    config:
+      kafka:
+        topic: logs
+        json_timestamp_units: 1ns
+      logparser:
+        log_paths: ['/var/log/**.log']
+        log_patterns:
+          CUSTOM_SYSLOG: '%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}'

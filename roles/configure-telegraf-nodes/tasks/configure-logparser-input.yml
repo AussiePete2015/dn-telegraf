@@ -1,0 +1,54 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+- block:
+  # Configure the logparser input for the named `measurement_set`; first set a
+  # few facts that we'll need later
+  - set_fact:
+      logparser_log_paths: '{{((measurement_set.config | default({})).logparser | default({})).log_paths | default(["/var/log/**.log"]) | to_json}}'
+      logparser_parse_from_beginning: '{{((measurement_set.config | default({})).logparser | default({})).log_parse_from_beginning | default(false)}}'
+      logparser_log_patterns: '{{((measurement_set.config | default({})).logparser | default({})).log_patterns | default({})}}'
+  # then perform some basic customization of the logparser input configuration
+  # in the config file associated with the named `measurement_set` (setting the
+  # array of log paths to search for logfiles, a flag indicating whether or not
+  # to parse the files found from the beginning, and a name for the measurements
+  # that are reported by the agent from those logfiles)
+  - name: Configure telegraf to parse selected logs
+    replace:
+      dest: "/etc/telegraf/telegraf.d/telegraf-{{measurement_set.name}}.conf"
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+    with_items:
+      - { regexp: '^(#)?(\s*)files = (.*)$' , replace: '\g<2>files = {{logparser_log_paths}}' }
+      - { regexp: '^(#)?(.*)from_beginning = (.*)$' , replace: '\g<2>from_beginning = {{logparser_parse_from_beginning | lower}}' }
+      - { regexp: '^(.*#)?(.*)measurement = (.*)$' , replace: '\g<2>measurement = "{{input_filter_entry}}"' }
+  become: true
+# finally, if a set of log patterns were defined, then configure the logparser
+# input configuration to use those patterns when parsing the defined log files
+- block:
+  - name: Configure patterns to use when reporting logs
+    replace:
+      dest: "/etc/telegraf/telegraf.d/telegraf-{{measurement_set.name}}.conf"
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+    with_items:
+      - { regexp: '^(#)?(.*)custom_pattern_files = (.*)$' , replace: '\g<2># custom_pattern_files = \g<3>' }
+  - set_fact:
+      keys_prefix: '"%{'
+      keys_sep: '}","%{'
+      keys_suffix: '}"'
+  - set_fact:
+      joined_keys: '{{ keys_prefix + (logparser_log_patterns.keys() | join(keys_sep)) + keys_suffix }}'
+  - name: Add custom_patterns to the telegraf configuration
+    lineinfile:
+      dest: "/etc/telegraf/telegraf.d/telegraf-{{measurement_set.name}}.conf"
+      insertbefore: "^(\\s+)'''$"
+      line: '      {{item.key}} {{item.value}}'
+      state: present
+    with_dict: "{{logparser_log_patterns}}"
+  - name: Add patterns the telegraf configuration
+    replace:
+      dest: "/etc/telegraf/telegraf.d/telegraf-{{measurement_set.name}}.conf"
+      regexp: '^((\s)*patterns\s*=\s*\[).*(\])$'
+      replace: '\g<1>{{joined_keys}}\g<3>'
+  become: true
+  when: logparser_log_patterns != {}

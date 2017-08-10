@@ -29,7 +29,7 @@ $ cat combined-inventory
 
 ```
 
-As you can see, our static inventory file consists of a list of the hosts targeted by our deployment followed by two host groups (the `zookeeper` and `kafka` host groups in this example). For each host in this file, we provide a list of the parameters that Ansible will need to connect to that host (INI-file style) as a set of `name=value` pairs. In this example, we've defined the following values for each of the entries in our static inventory file:
+As you can see, our static inventory file consists of a list of the hosts involved in our Telegraf deployment followed by two host groups (the `zookeeper` and `kafka` host groups in this example). For each host in this file, we provide a list of the parameters that Ansible will need to connect to that host (INI-file style) as a set of `name=value` pairs. In this example, we've defined the following values for each of the entries in our static inventory file:
 
 * **`ansible_ssh_host`**: the hostname/address that Ansible should use to connect to that host; if not specified, the same hostname/address listed at the start of the line for that entry for that host will be used (in this example we are using IP addresses). This parameter can be important when there are multiple network interfaces on each host and only one of them (an admin network, for example) allows for SSH access
 * **`ansible_ssh_port`**: the port that Ansible should use when connecting to the host via SSH; if not specified, Ansible will attempt to connect using the default SSH port (port 22)

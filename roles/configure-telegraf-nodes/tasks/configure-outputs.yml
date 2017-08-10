@@ -1,0 +1,14 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+# Customize the outputs in the configuration file associated with the input
+# `measurement_set` for each of the `output_filter_element` values defined
+# in that `measurement_set`; customization is done based on the configuration
+# parameters that are defined in the `config` hash in that `measurement_set`
+# (if such configuration parameters exist)
+- set_fact:
+    output_filter_elements: "{{(measurement_set.output_filter | default('')).split(':')}}"
+- include: configure-output.yml static=no
+  with_items: "{{output_filter_elements}}"
+  loop_control:
+    loop_var: output_filter_entry
+  when: ((measurement_set.config | default({}))[output_filter_entry] | default({})) != {}

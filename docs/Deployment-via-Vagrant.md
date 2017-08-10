@@ -13,7 +13,7 @@ $ vagrant -a="192.168.34.88,192.168.34.89,192.168.34.90" \
     -i="./kafka_inventory" up
 ```
 
-Note that both of these commands deploy Telegraf agents to the target node or nodes, configuring those agents to report the metrics and logs information that they are gathering to the Kafka instance or cluster that is described in the static inventory that is passed into the `vagrant ... up` command using the `-i, --inventory-file` flag. The argument passed in using this flag **must** point to an Ansible (static) inventory file containing the information needed to connect to the nodes in that Kafka cluster (so that the playbook can gather facts about those nodes to configure the Telegraf agents to report the meta-data they are gathering to that cluster).  As was mentioned in the discussion of provisioning Telegraf agents to a set of target nodes using a static inventory file in the [Deployment-Scenarios.md](Deployment-Scenarios.md) file, this inventory file could just contain a list of the nodes in the Kafka cluster and the information needed to connect to those nodes:
+Note that both of these commands deploy a Telegraf agent to the target node (or a set of Telegraf agents to the target nodes if more than one node is specified in the address list), configuring that agent (or those agents) to report the metrics and logs information that are gathered to the Kafka instance or cluster that is described in the static inventory that is passed into the `vagrant ... up` command using the `-i, --inventory-file` flag. The argument passed in using this flag **must** point to an Ansible (static) inventory file containing the information needed to connect to the nodes in an existing Kafka cluster (so that the playbook can gather facts about those nodes to configure the Telegraf agents to report the meta-data they are gathering to that cluster).  As was mentioned in the discussion of provisioning Telegraf agents to a set of target nodes using a static inventory file in the [Deployment-Scenarios.md](Deployment-Scenarios.md) file, this inventory file could just contain a list of the nodes in the Kafka cluster and the information needed to connect to those nodes:
 
 ```bash
 $ cat kafka_inventory
@@ -31,7 +31,7 @@ $ cat kafka_inventory
 $
 ```
 
-If a Kafka inventory file is not provided when building a multi-node cluster, or if the file passed in does not contain the information needed to connect to one or more Kafka nodes, then an error will be thrown by the `vagrant` command.
+If a Kafka inventory file is not provided when building a multi-node cluster, or if the file passed in does not contain the information needed to connect to one or more Kafka nodes, then an error will be thrown during the provisioning process.
 
 In terms of how it all works, the [Vagrantfile](../Vagrantfile) is written in such a way that the following sequence of events occurs when the `vagrant ... up` command shown above is run:
 
@@ -39,7 +39,7 @@ In terms of how it all works, the [Vagrantfile](../Vagrantfile) is written in su
 1. After all of the nodes have been created, Telegraf agents are deployed all of those nodes and those agents are configured to report their metrics/logs back to the Kafka cluster
 1. The `telegraf` service is started on all of the nodes that were just provisioned
 
-Once the playbook run triggered by the [Vagrantfile](../Vagrantfile) is complete, we can simply SSH into one of the nodes in our Kafka cluster (eg. 192.168.38.9) and use the kafka-console-consumer to see if the metrics/logs from our Telegraf agents are being reported back to our Kafka cluster correctly.
+Once the playbook run triggered by the [Vagrantfile](../Vagrantfile) is complete, we can simply SSH into one of the nodes in our Kafka cluster (eg. 192.168.38.9) and use the `kafka-console-consumer` command to see if the metrics/logs from our Telegraf agents are being reported back to our Kafka cluster correctly.
 
 So, to recap, by using a single `vagrant ... up` command we were able to quickly deploy Telegraf agents to multiple nodes and configure those agents to report their metrics/logs back to our Kafka cluster. A similar `vagrant ... up` command could be used to deploy Telegraf agents to any number of nodes, provided that a Kafka cluster has already been provisioned that those agents can report to.
 
@@ -53,7 +53,7 @@ $ vagrant -a="192.168.34.88,192.168.34.89,192.168.34.90" \
     up --no-provision
 ```
 
-This will create a set of three virtual machines with the appropriate IP addresses ("192.168.34.88", "192.168.34.89", and "192.168.34.90"), but will skip the process of provisioning Telegraf agents to those nodes. Note that when you are creating the virtual machines but skipping the provisioning step it is not necessary to provide the list of Kafka nodes using the `-k, --kafka-list` flag, nor is it necessary to provide an inventory file for those Kafka nodes using the `-i, --kafka-inventory-file` flag.
+This will create a set of three virtual machines with the appropriate IP addresses ("192.168.34.88", "192.168.34.89", and "192.168.34.90"), but will skip the process of provisioning Telegraf agents to those nodes. Note that when you are creating the virtual machines but skipping the provisioning step it is not necessary to provide an inventory file for the Kafka cluster using the `-i, --inventory-file` flag.
 
 To provision Telegraf agents to the machines that were created above and configure those machines to report their metrics/logs back to an existing Kafka cluster, we simply need to run a command like the following:
 
@@ -65,7 +65,7 @@ $ vagrant -s="192.168.34.88,192.168.34.89,192.168.34.90" \
 That command will attach to the named instances and run the playbook in this repository's [provision-telegraf.yml](../provision-telegraf.yml) file on those node, resulting in the deployment of Telegraf agents to the nodes that were created in the `vagrant ... up --no-provision` command that was shown, above.
 
 ## Additional vagrant deployment options
-While the commands shown above will install Telegraf agents to one or more nodes with a reasonable, default configuration from a standard location, there are additional command-line parameters that can be used to control the deployment process triggered by a `vagrant ... up` or `vagrant ... provision` command. Here is a complete list of the command-line flags that can be supported by the [Vagrantfile](../Vagrantfile) in this repository:
+While the commands shown above will install Telegraf agents on one or more nodes with a reasonable, default configuration from a standard location, there are additional command-line parameters that can be used to control the deployment process triggered by a `vagrant ... up` or `vagrant ... provision` command. Here is a complete list of the command-line flags that can be supported by the [Vagrantfile](../Vagrantfile) in this repository:
 
 * **`-a, --addr-list`**: the address list; this is the list of nodes that will be created and provisioned, either by a single `vagrant ... up` command or by a `vagrant ... up --no-provision` command followed by a `vagrant ... provision` command; this command-line flag **must** be provided for almost every `vagrant` command supported by the [Vagrantfile](../Vagrantfile) in this repository
 * **`-i, --inventory-file`**: the path to a static inventory file containing the parameters needed to connect to the nodes that make up the associated Kafka cluster; this argument **must** be provided for any `vagrant` commands that involve provisioning of Telegraf agents to nodes

@@ -32,11 +32,7 @@ These parameters are used configure the Telegraf agents themselves during a play
 
 * **`data_iface`**: the name of the interface that the Telegraf agents should use when talking with the Kafka cluster. An interface of this name must exist for the playbook to run successfully, and if unspecified a value of `eth0` is assumed
 * **`iface_description_array`**: this parameter can be used in place of the `data_iface` parameter described above, and it provides users with the ability to specify a description of that interface rather than identifying it by name (more on this, below)
-* **`log_paths`**: a list of the paths searched for logfiles by the agent that collects and reports logs to Kafka
-* **`log_patterns`**: a list of the patterns used by the agent that collects and reports logs to Kafka; these patterns are used to convert the log file entries to JSON formatted messages
-* **`log_parse_from_beginning`**: a flag indicating whether or not the agent that collects and reports logs to Kafka should parse the log files that it finds from the beginning; by default this value is set to `true`
-* **`input-filters`**: a hash of hashes that describes the inputs that should be gathered by each agent depoyed (the `logs` and `metrics` agents); by default the `logs` agent gathers `logparser` data while the `metrics` agent gathers CPU, Disk, DiskIO, Kernel, Memory, Process, Swap, and System data
-* **`output-filters`**: a hash of hashes that describes the outputs for each agent deployed (the `logs` and `metrics` agents); by default both report the meta-data they gatehr to the associated Kafka cluster
+* **`configuration_list`**: a list of configuration parameters that should be used for the Telegraf agent itself and for each of the `measurement_sets` that the agent will be gathering and reporting to the Kafka cluster; for more information on this parameter see the detailed discussion of using this parameter to control the configuration of the Telegraf agents being deployed in the [Agent Configuration](Agent-Configuration.md) document.
 
 ## Interface names vs. interface descriptions
 For some operating systems on some platforms, it can be difficult (if not impossible) to determine the name of the interface that should be passed into the playbook using the `data_iface` parameter that we described, above. In those situations, the playbook in this repository provides an alternative; specifying that interface using the `iface_description_array` parameter instead.

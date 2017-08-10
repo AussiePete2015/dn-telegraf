@@ -1,0 +1,16 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+# Customize the specified `input_filter_entry` in the configuration file for
+# the specified `measurement_set` based on the config parameters defined
+# for that `measurement_set`/`input_filter_entry` pair
+- set_fact:
+    config_filename: "{{playbook_dir}}/roles/configure-telegraf-nodes/tasks/configure-{{input_filter_entry}}-input.yml"
+# check the Ansible host to see if there is a YAML file to customize the named
+# `input_filter_entry` in the configuration file for the named
+# `measurement_set`
+- local_action: stat path="{{config_filename}}"
+  register: check_path
+# if so, then include that file (to customize that `input_filter_entry`)
+- include: "{{config_filename}}"
+  static: no
+  when: check_path.stat.exists

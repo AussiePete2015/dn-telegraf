@@ -1,0 +1,8 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+---
+- name: "Add {{package_name}} yum repository file"
+  become: true
+  template:
+    src: centos-repo-template.j2
+    dest: "/etc/yum.repos.d/{{package_name}}.repo"
+    mode: 0644
